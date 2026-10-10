@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -20,6 +21,7 @@ import com.example.voltix.data.model.Product
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
 data class CartItem(
@@ -118,13 +120,31 @@ fun CartScreen(
                                         color = Color(0xFF1E1E1E),
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "${item.product.price.toInt()} ₽",
-                                        fontSize = 17.sp,
-                                        color = VoltixOrange,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    // Экономия по скидке
+                                    if (item.product.discountPercent > 0 && item.product.oldPrice != null) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = formatPrice(item.product.price),
+                                                fontSize = 17.sp,
+                                                color = VoltixOrange,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = formatPrice(item.product.oldPrice!!),
+                                                fontSize = 12.sp,
+                                                color = Color.LightGray,
+                                                textDecoration = TextDecoration.LineThrough
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = formatPrice(item.product.price),
+                                            fontSize = 17.sp,
+                                            color = VoltixOrange,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
 
                                 Row(
@@ -150,9 +170,11 @@ fun CartScreen(
 
                                     IconButton(
                                         onClick = { AppStateRepository.incrementCartItem(item.product.id) },
+                                        enabled = AppStateRepository.canAddToCart(item.product),
                                         modifier = Modifier.size(28.dp)
                                     ) {
-                                        Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = VoltixTeal)
+                                        Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                                            color = if (AppStateRepository.canAddToCart(item.product)) VoltixTeal else Color.LightGray)
                                     }
                                 }
                             }
@@ -170,6 +192,22 @@ fun CartScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Экономия по товарам со скидкой
+                    val savings = cartItems.sumOf { item ->
+                        val old = item.product.oldPrice ?: item.product.price
+                        ((old - item.product.price) * item.count).coerceAtLeast(0.0)
+                    }
+                    if (savings > 0) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Ваша экономия:", fontSize = 13.sp, color = Color(0xFF2E7D32))
+                            Text("−${formatPrice(savings)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF2E7D32))
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -181,7 +219,7 @@ fun CartScreen(
                             color = Color.Gray
                         )
                         Text(
-                            text = "${totalAmount.toInt()} ₽",
+                            text = formatPrice(totalAmount),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = VoltixOrange

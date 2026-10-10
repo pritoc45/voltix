@@ -35,6 +35,7 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.data.repository.UserPreferencesRepository
+import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
 import kotlinx.coroutines.launch
@@ -248,7 +249,7 @@ fun ProfileScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "${product.price.toInt()} ₽",
+                                        text = formatPrice(product.price),
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = VoltixOrange
@@ -345,7 +346,7 @@ fun ProfileScreen(
 
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
-                                                text = "${order.date} • ${order.items.sumOf { it.count }} шт. • ${order.totalPrice.toInt()} ₽",
+                                                text = "${order.date} • ${order.items.sumOf { it.count }} шт. • ${formatPrice(order.totalPrice)}",
                                                 fontSize = 12.sp,
                                                 color = Color.Gray
                                             )

@@ -21,6 +21,7 @@ import com.example.voltix.data.model.Product
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,24 +118,40 @@ fun FavoritesScreen(
                                         maxLines = 1
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "${product.price.toInt()} ₽",
-                                        fontSize = 17.sp,
-                                        color = VoltixOrange,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = formatPrice(product.price),
+                                            fontSize = 17.sp,
+                                            color = VoltixOrange,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (product.oldPrice != null && product.discountPercent > 0) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "-${product.discountPercent}%",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                modifier = Modifier
+                                                    .background(VoltixOrange, RoundedCornerShape(6.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
                                 }
 
                                 Button(
-                                    onClick = {
-                                        AppStateRepository.addToCart(product)
-                                        onAddToCart(product)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = VoltixTeal),
+                                    onClick = { onAddToCart(product) },
+                                    enabled = product.isAvailable && AppStateRepository.canAddToCart(product),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = VoltixTeal,
+                                        disabledContainerColor = Color(0xFFE0E0E0),
+                                        disabledContentColor = Color.Gray
+                                    ),
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text("В корзину", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(if (product.isAvailable) "В корзину" else "Нет в наличии", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }

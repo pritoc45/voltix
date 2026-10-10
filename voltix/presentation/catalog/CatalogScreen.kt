@@ -33,6 +33,7 @@ fun CatalogScreen(
     val categories = listOf(
         CatalogCategory("Женская одежда"),
         CatalogCategory("Мужская одежда"),
+        CatalogCategory("Детская одежда"),
         CatalogCategory("Обувь"),
         CatalogCategory("Сумки и рюкзаки"),
         CatalogCategory("Аксессуары"),
