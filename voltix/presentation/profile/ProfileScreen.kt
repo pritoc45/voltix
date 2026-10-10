@@ -711,7 +711,7 @@ fun ProfileScreen(
                                 AppStateRepository.addCustomProduct(
                                     title = title,
                                     price = priceVal,
-                                    category = if (category.isNotBlank()) category else "Комплектующие ПК"
+                                    category = if (category.isNotBlank()) category else "Женская одежда"
                                 )
                                 showAddProductDialog = false
                             }

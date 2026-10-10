@@ -57,9 +57,9 @@ fun HomeScreen(
     var selectedSpecTag by remember { mutableStateOf("Все") }
     var sortByPriceAsc by remember { mutableStateOf<Boolean?>(null) } // null - без сортировки, true - по возрастанию, false - по убыванию
 
-    val categories = listOf("Все", "Смартфоны", "Ноутбуки", "Планшеты", "Аудио и наушники", "Гаджеты и часы", "Комплектующие ПК", "Телевизоры")
-    val brands = listOf("Все", "Apple", "Samsung", "Xiaomi", "NVIDIA", "Sony", "ASUS")
-    val specTags = listOf("Все", "120Hz", "AMOLED", "RTX", "M3", "ANC", "5000 mAh")
+    val categories = listOf("Все", "Женская одежда", "Мужская одежда", "Обувь", "Сумки и рюкзаки", "Аксессуары", "Верхняя одежда", "Спортивная одежда")
+    val brands = listOf("Все", "Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Levi's", "Timberland")
+    val specTags = listOf("Все", "Кроссовки", "Джинсы", "Куртка", "Хлопок", "Кожа", "Шерсть")
 
     val filteredProducts = uiState.products.filter { product ->
         val matchesCategory = (selectedCategory == "Все") || (product.category == selectedCategory)
