@@ -26,7 +26,39 @@ data class ReviewData(
     var isSubmitted: Boolean = false
 )
 
+data class ProductReview(
+    val id: String,
+    val author: String,
+    val rating: Int,
+    val text: String,
+    val date: String
+)
+
 object AppStateRepository {
+
+    // Общие списки категорий и размеров — единый источник правды для всего приложения
+    val allCategories: List<String> = listOf(
+        "Женская одежда",
+        "Мужская одежда",
+        "Детская одежда",
+        "Обувь",
+        "Сумки и рюкзаки",
+        "Аксессуары",
+        "Верхняя одежда",
+        "Спортивная одежда"
+    )
+
+    val clothingSizes: List<String> = listOf("XS", "S", "M", "L", "XL", "XXL")
+    val kidsSizes: List<String> = listOf("92", "104", "116", "128", "140", "152")
+    val shoeSizes: List<String> = listOf("36", "37", "38", "39", "40", "41", "42", "43", "44", "45")
+    val oneSize: List<String> = listOf("One size")
+
+    private fun getSizesForCategory(category: String): List<String> = when (category) {
+        "Обувь" -> shoeSizes
+        "Детская одежда" -> kidsSizes
+        "Аксессуары", "Сумки и рюкзаки" -> oneSize
+        else -> clothingSizes
+    }
 
     private fun getCategoryImageUrl(category: String, index: Int): String {
         val womenClothingImages = listOf(
@@ -65,10 +97,18 @@ object AppStateRepository {
             "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&q=80",
             "https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?w=600&q=80"
         )
+        // Детская одежда: используем проверенные фото одежды из рабочего пула,
+        // чтобы не показывать битые картинки (легко заменить на детские позже)
+        val kidsImages = listOf(
+            "https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=600&q=80",
+            "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&q=80",
+            "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&q=80"
+        )
 
         val pool = when (category) {
             "Женская одежда" -> womenClothingImages
             "Мужская одежда" -> menClothingImages
+            "Детская одежда" -> kidsImages
             "Обувь" -> shoesImages
             "Сумки и рюкзаки" -> bagsImages
             "Аксессуары" -> accessoriesImages
@@ -150,12 +190,23 @@ object AppStateRepository {
     private fun createInitialProducts(): List<Product> {
         val list = mutableListOf<Product>()
 
+        val colorPalette = listOf("Чёрный", "Белый", "Серый", "Синий", "Бежевый", "Зелёный")
+
         fun generateList(category: String, count: Int, baseModels: List<Pair<String, Double>>) {
+            val sizes = getSizesForCategory(category)
             for (i in 0 until count) {
                 val model = baseModels[i % baseModels.size]
                 val modifier = if (i >= baseModels.size) " ${(i / baseModels.size) + 1}th Gen" else ""
                 val title = "${model.first}$modifier"
                 val price = model.second + ((i % 5) * 1500)
+                // Каждому третьему товару даём скидку: зачёркнутая старая цена
+                val hasDiscount = i % 3 == 0
+                val oldPrice = if (hasDiscount) price + ((price * 0.25).toLong() / 10) * 10.0 else null
+                val stock = when {
+                    i % 17 == 0 -> 0   // несколько позиций «Нет в наличии»
+                    i % 5 == 0 -> 2    // «Осталось мало»
+                    else -> 5 + (i % 20)
+                }
                 list.add(
                     Product(
                         id = "${category}_${i + 1}",
@@ -164,7 +215,17 @@ object AppStateRepository {
                         price = price,
                         imageUrl = getCategoryImageUrl(category, i),
                         category = category,
-                        specs = generateSpecsForSpecificProduct(title, category, i)
+                        specs = generateSpecsForSpecificProduct(title, category, i),
+                        oldPrice = oldPrice,
+                        stockCount = stock,
+                        rating = if (i % 4 == 3) 0.0 else 3.6 + (i % 14) / 10.0, // ~3.6–4.9, у части товаров ещё нет оценок
+                        reviewsCount = if (i % 4 == 3) 0 else 3 + (i * 7) % 120,
+                        sizes = sizes,
+                        colors = if (category == "Аксессуары" || category == "Сумки и рюкзаки") {
+                            colorPalette.take(3)
+                        } else {
+                            colorPalette.shuffled(java.util.Random(i.toLong())).take(3)
+                        }
                     )
                 )
             }
@@ -182,6 +243,13 @@ object AppStateRepository {
             "Джинсы Levi's 501 Original" to 8990.0,
             "Худи оверсайз Street Cozy" to 5990.0,
             "Чиносы Slim Fit Urban" to 6490.0
+        ))
+        generateList("Детская одежда", 28, listOf(
+            "Костюм детский Happy Kids Cotton" to 3490.0,
+            "Куртка детская демисезонная Junior Shell" to 6990.0,
+            "Платье детское Sunny Floral" to 2990.0,
+            "Свитшот детский Dino Fun" to 2490.0,
+            "Комбинезон детский Warm Winter" to 8990.0
         ))
         generateList("Обувь", 38, listOf(
             "Кроссовки Nike Air Max 270" to 14990.0,
@@ -233,11 +301,68 @@ object AppStateRepository {
     private val _userReviews = MutableStateFlow<List<ReviewData>>(emptyList())
     val userReviews: StateFlow<List<ReviewData>> = _userReviews.asStateFlow()
 
+    // Промокоды магазина: код -> описание скидки
+    data class Promo(val title: String, val amount: Double)
+
+    private val promoCodes: Map<String, Promo> = mapOf(
+        "VOLTIX10" to Promo("Скидка 10% на заказ", 0.0),   // процентные считаются отдельно
+        "NEW1000" to Promo("−1 000 ₽ при заказе от 5 000 ₽", 1000.0),
+        "FREESHIP" to Promo("Бесплатная доставка", -1.0)    // −1 означает «бесплатная доставка»
+    )
+
+    fun validatePromoCode(code: String): Boolean =
+        promoCodes.containsKey(code.trim().uppercase())
+
+    fun getPromoInfo(code: String): Promo? = promoCodes[code.trim().uppercase()]
+
+    fun calcPromoDiscount(code: String, subtotal: Double, deliveryCost: Double): Pair<Double, Double> {
+        // Возвращает (скидка на сумму, новая стоимость доставки)
+        val promo = getPromoInfo(code) ?: return 0.0 to deliveryCost
+        return when {
+            promo.amount == 0.0 -> (subtotal * 0.10) to deliveryCost          // VOLTIX10: 10%
+            promo.amount < 0 -> 0.0 to 0.0                                     // FREESHIP: доставка 0
+            subtotal >= 5000 -> promo.amount to deliveryCost                   // NEW1000
+            else -> 0.0 to deliveryCost
+        }
+    }
+
+    // Демо-отзывы для карточек товаров
+    private val demoReviews: Map<String, List<ProductReview>> by lazy {
+        val templates = listOf(
+            Triple("Анна К.", 5, "Отличное качество! Ткань приятная к телу, после стирки не села. Размер в размер."),
+            Triple("Дмитрий С.", 4, "Хорошая вещь за свои деньги. Доставили быстро, упаковка целая. Немного маломерит, берите на размер больше."),
+            Triple("Мария П.", 5, "Ношу уже месяц — вид как новый. Цвет точно как на фото, очень довольна."),
+            Triple("Игорь В.", 3, "Нормально, но швы местами неровные. Для повседневной носки сойдёт."),
+            Triple("Екатерина Л.", 5, "Рекомендую! Заказала второй раз в другом цвете. Сидит идеально.")
+        )
+        buildMap {
+            _products.value.filter { it.reviewsCount > 0 }.take(60).forEachIndexed { idx, p ->
+                val count = 2 + idx % 3
+                put(
+                    p.id,
+                    (0 until count).map { n ->
+                        val t = templates[(idx + n) % templates.size]
+                        ProductReview(
+                            id = "demo_${p.id}_$n",
+                            author = t.first,
+                            rating = t.second,
+                            text = t.third,
+                            date = "%02d.%02d.2026".format((idx % 28) + 1, (n % 9) + 1)
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    fun getProductReviews(productId: String): List<ProductReview> = demoReviews[productId] ?: emptyList()
+
     fun getProductById(id: String): Product {
         return _products.value.find { it.id == id } ?: _products.value.first()
     }
 
     fun addCustomProduct(title: String, price: Double, category: String) {
+        val sizes = getSizesForCategory(category)
         val newProduct = Product(
             id = System.currentTimeMillis().toString(),
             title = title,
@@ -245,9 +370,19 @@ object AppStateRepository {
             price = price,
             imageUrl = getCategoryImageUrl(category, 0),
             category = category,
-            specs = generateSpecsForSpecificProduct(title, category, 0)
+            specs = generateSpecsForSpecificProduct(title, category, 0),
+            stockCount = 10,
+            sizes = sizes,
+            colors = listOf("Чёрный", "Белый")
         )
         _products.update { listOf(newProduct) + it }
+    }
+
+    // Ограничение количества товара в корзине по остатку на складе
+    fun canAddToCart(product: Product): Boolean {
+        if (!product.isAvailable) return false
+        val current = _cartItems.value.find { it.product.id == product.id }?.count ?: 0
+        return current < product.stockCount
     }
 
     fun addToCart(product: Product) {

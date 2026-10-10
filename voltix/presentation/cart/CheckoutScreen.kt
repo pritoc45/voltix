@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -39,9 +41,19 @@ fun CheckoutScreen(
     val totalAmount = cartItems.sumOf { it.product.price * it.count }
     val totalCount = cartItems.sumOf { it.count }
 
+    // Промокод
+    var promoCodeInput by remember { mutableStateOf("") }
+    var appliedPromo by remember { mutableStateOf<String?>(null) }
+    var promoError by remember { mutableStateOf(false) }
+
     val deliveryCost = if (cartItems.isNotEmpty()) 490.0 else 0.0
-    val discount = if (totalAmount > 10000) 1000.0 else 0.0
-    val finalPrice = (totalAmount + deliveryCost - discount).coerceAtLeast(0.0)
+    val baseDiscount = if (totalAmount > 10000) 1000.0 else 0.0
+    val (promoDiscount, finalDeliveryCost) = remember(appliedPromo, totalAmount, deliveryCost) {
+        if (appliedPromo != null) AppStateRepository.calcPromoDiscount(appliedPromo, totalAmount, deliveryCost)
+        else 0.0 to deliveryCost
+    }
+    val discount = baseDiscount + promoDiscount
+    val finalPrice = (totalAmount + finalDeliveryCost - discount).coerceAtLeast(0.0)
 
     var showReceiptDialog by remember { mutableStateOf(false) }
     var orderNumber by remember { mutableStateOf("") }
@@ -112,7 +124,7 @@ fun CheckoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Товары", color = Color.Gray, fontSize = 14.sp)
-                        Text("${totalAmount.toInt()} ₽", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text(formatPrice(totalAmount), fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -122,7 +134,19 @@ fun CheckoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Доставка", color = Color.Gray, fontSize = 14.sp)
-                        Text("${deliveryCost.toInt()} ₽", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        if (finalDeliveryCost == 0.0 && deliveryCost > 0) {
+                            Text(
+                                formatPrice(deliveryCost),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp,
+                                color = Color.LightGray,
+                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Бесплатно", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF2E7D32))
+                        } else {
+                            Text(formatPrice(finalDeliveryCost), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        }
                     }
 
                     if (discount > 0) {
@@ -131,9 +155,74 @@ fun CheckoutScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Скидка", color = Color(0xFFE53935), fontSize = 14.sp)
-                            Text("-${discount.toInt()} ₽", color = Color(0xFFE53935), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                            Text(
+                                if (appliedPromo != null && promoDiscount > 0) "Скидка (промокод ${appliedPromo})" else "Скидка",
+                                color = Color(0xFFE53935), fontSize = 14.sp
+                            )
+                            Text("−${formatPrice(discount)}", color = Color(0xFFE53935), fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         }
+                    }
+
+                    // Поле ввода промокода
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Color(0xFFEEEEEE))
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = promoCodeInput,
+                            onValueChange = {
+                                promoCodeInput = it.uppercase()
+                                promoError = false
+                            },
+                            placeholder = { Text("Промокод", fontSize = 13.sp) },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.LocalOffer, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                            },
+                            singleLine = true,
+                            isError = promoError,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (appliedPromo != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    appliedPromo = null
+                                    promoCodeInput = ""
+                                    promoError = false
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Убрать", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    val code = promoCodeInput.trim().uppercase()
+                                    if (code.isNotEmpty() && AppStateRepository.validatePromoCode(code)) {
+                                        appliedPromo = code
+                                        promoError = false
+                                    } else {
+                                        promoError = true
+                                    }
+                                },
+                                enabled = promoCodeInput.isNotBlank(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = VoltixTeal)
+                            ) {
+                                Text("Применить", fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
+                    if (promoError) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Промокод не найден или не подходит к заказу", fontSize = 11.sp, color = Color(0xFFE53935))
+                    } else {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Попробуйте: VOLTIX10, NEW1000, FREESHIP", fontSize = 11.sp, color = Color.LightGray)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -152,7 +241,7 @@ fun CheckoutScreen(
                             color = Color(0xFF1E1E1E)
                         )
                         Text(
-                            text = "${finalPrice.toInt()} ₽",
+                            text = formatPrice(finalPrice),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1E1E1E)
@@ -355,7 +444,7 @@ fun CheckoutScreen(
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = "${(item.product.price * item.count).toInt()} ₽",
+                                    text = formatPrice(item.product.price * item.count),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF1E1E1E)
@@ -374,7 +463,7 @@ fun CheckoutScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Итого оплачено:", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1E1E))
-                        Text("${finalPrice.toInt()} ₽", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = VoltixOrange)
+                        Text(formatPrice(finalPrice), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = VoltixOrange)
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))

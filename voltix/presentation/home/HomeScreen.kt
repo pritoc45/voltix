@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -32,6 +34,7 @@ import com.example.voltix.data.model.Product
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,16 +60,22 @@ fun HomeScreen(
     var selectedSpecTag by remember { mutableStateOf("Все") }
     var sortByPriceAsc by remember { mutableStateOf<Boolean?>(null) } // null - без сортировки, true - по возрастанию, false - по убыванию
 
-    val categories = listOf("Все", "Женская одежда", "Мужская одежда", "Обувь", "Сумки и рюкзаки", "Аксессуары", "Верхняя одежда", "Спортивная одежда")
-    val brands = listOf("Все", "Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Levi's", "Timberland")
+    var onlyDiscounted by remember { mutableStateOf(false) }
+    var minRating by remember { mutableStateOf(0.0) }
+
+    val categories = listOf("Все") + AppStateRepository.allCategories
+    val brands = listOf("Все", "Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Levi's", "Timberland", "Converse", "The North Face")
     val specTags = listOf("Все", "Кроссовки", "Джинсы", "Куртка", "Хлопок", "Кожа", "Шерсть")
 
     val filteredProducts = uiState.products.filter { product ->
         val matchesCategory = (selectedCategory == "Все") || (product.category == selectedCategory)
-        val matchesSearch = product.title.contains(searchQuery, ignoreCase = true)
+        val matchesSearch = product.title.contains(searchQuery, ignoreCase = true) ||
+                product.category.contains(searchQuery, ignoreCase = true)
         val matchesBrand = (selectedBrand == "Все") || product.title.contains(selectedBrand, ignoreCase = true)
         val matchesSpec = (selectedSpecTag == "Все") || product.specs.values.any { it.contains(selectedSpecTag, ignoreCase = true) } || product.specs.keys.any { it.contains(selectedSpecTag, ignoreCase = true) }
-        matchesCategory && matchesSearch && matchesBrand && matchesSpec
+        val matchesDiscount = !onlyDiscounted || product.discountPercent > 0
+        val matchesRating = product.rating >= minRating
+        matchesCategory && matchesSearch && matchesBrand && matchesSpec && matchesDiscount && matchesRating
     }.let { list ->
         when (sortByPriceAsc) {
             true -> list.sortedBy { it.price }
@@ -206,6 +215,25 @@ fun HomeScreen(
                                     .background(Color(0xFF262121))
                             )
 
+                            // Бейдж скидки
+                            if (product.discountPercent > 0) {
+                                Surface(
+                                    color = VoltixOrange,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(6.dp)
+                                ) {
+                                    Text(
+                                        text = "-${product.discountPercent}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
                             IconButton(
                                 onClick = { onToggleFavorite(product) },
                                 modifier = Modifier
@@ -217,6 +245,24 @@ fun HomeScreen(
                                     contentDescription = "Favorite",
                                     tint = if (isFav) VoltixOrange else Color.White
                                 )
+                            }
+
+                            // Затемнение, если товара нет в наличии
+                            if (!product.isAvailable) {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.Black.copy(alpha = 0.45f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Нет в наличии",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
                             }
                         }
 
@@ -230,27 +276,91 @@ fun HomeScreen(
                             maxLines = 1
                         )
 
+                        // Рейтинг товара
+                        if (product.rating > 0) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = "Rating",
+                                    tint = Color(0xFFFFC107),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "%.1f".format(product.rating),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF616161)
+                                )
+                                if (product.reviewsCount > 0) {
+                                    Text(
+                                        text = " (${product.reviewsCount})",
+                                        fontSize = 12.sp,
+                                        color = Color.LightGray
+                                    )
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(4.dp))
 
+                        // Цена + зачёркнутая старая цена
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = formatPrice(product.price),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = VoltixOrange
+                            )
+                            if (product.oldPrice != null) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = formatPrice(product.oldPrice!!),
+                                    fontSize = 12.sp,
+                                    color = Color.LightGray,
+                                    textDecoration = TextDecoration.LineThrough
+                                )
+                            }
+                        }
+
+                        // Остаток на складе
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "${product.price.toInt()} ₽",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = VoltixOrange
+                            text = when {
+                                !product.isAvailable -> "Нет в наличии"
+                                product.stockCount <= 3 -> "Осталось ${product.stockCount} шт."
+                                else -> "В наличии"
+                            },
+                            fontSize = 11.sp,
+                            color = when {
+                                !product.isAvailable -> Color(0xFFE53935)
+                                product.stockCount <= 3 -> VoltixOrange
+                                else -> Color(0xFF2E7D32)
+                            }
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Button(
                             onClick = { onAddToCart(product) },
+                            enabled = product.isAvailable && AppStateRepository.canAddToCart(product),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(36.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = VoltixTeal),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = VoltixTeal,
+                                disabledContainerColor = Color(0xFFE0E0E0),
+                                disabledContentColor = Color.Gray
+                            ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("В корзину", fontSize = 12.sp, color = Color.White)
+                            Text(
+                                text = if (!product.isAvailable) "Нет в наличии" else "В корзину",
+                                fontSize = 12.sp,
+                                color = if (product.isAvailable) Color.White else Color.Gray
+                            )
                         }
                     }
                 }
@@ -332,6 +442,32 @@ fun HomeScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text("Дополнительно", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E1E1E))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = onlyDiscounted,
+                            onClick = { onlyDiscounted = !onlyDiscounted },
+                            label = { Text("Только со скидкой", fontSize = 12.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = VoltixOrange,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(listOf(0.0 to "Любой рейтинг", 4.0 to "Рейтинг 4+", 4.5 to "Рейтинг 4.5+")) { (value, label) ->
+                            FilterChip(
+                                selected = minRating == value,
+                                onClick = { minRating = value },
+                                label = { Text(label, fontSize = 12.sp) }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Row(
@@ -343,6 +479,8 @@ fun HomeScreen(
                                 selectedBrand = "Все"
                                 selectedSpecTag = "Все"
                                 sortByPriceAsc = null
+                                onlyDiscounted = false
+                                minRating = 0.0
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
