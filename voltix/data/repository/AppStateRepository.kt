@@ -29,126 +29,120 @@ data class ReviewData(
 object AppStateRepository {
 
     private fun getCategoryImageUrl(category: String, index: Int): String {
-        val phoneImages = listOf(
-            "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80",
-            "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=600&q=80",
-            "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&q=80"
+        val womenClothingImages = listOf(
+            "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80",
+            "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80",
+            "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&q=80"
         )
-        val laptopImages = listOf(
-            "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&q=80",
-            "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=600&q=80",
-            "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=600&q=80"
+        val menClothingImages = listOf(
+            "https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?w=600&q=80",
+            "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80",
+            "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&q=80"
         )
-        val tabletImages = listOf(
-            "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=600&q=80",
-            "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&q=80"
+        val shoesImages = listOf(
+            "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80",
+            "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&q=80",
+            "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&q=80",
+            "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&q=80"
         )
-        val audioImages = listOf(
-            "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80",
-            "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&q=80"
+        val bagsImages = listOf(
+            "https://images.unsplash.com/photo-1547949003-9792a18a2601?w=600&q=80",
+            "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80",
+            "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=80"
         )
-        val watchImages = listOf(
+        val accessoriesImages = listOf(
             "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80",
-            "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=600&q=80"
+            "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&q=80",
+            "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=80"
         )
-        val pcImages = listOf(
-            "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=600&q=80",
-            "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=600&q=80"
+        val outerwearImages = listOf(
+            "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80",
+            "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80",
+            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80"
         )
-        val tvImages = listOf(
-            "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=600&q=80",
-            "https://images.unsplash.com/photo-1461151304267-38535e780c79?w=600&q=80"
+        val sportImages = listOf(
+            "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&q=80",
+            "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&q=80",
+            "https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?w=600&q=80"
         )
 
         val pool = when (category) {
-            "Смартфоны" -> phoneImages
-            "Ноутбуки" -> laptopImages
-            "Планшеты" -> tabletImages
-            "Аудио и наушники" -> audioImages
-            "Гаджеты и часы" -> watchImages
-            "Комплектующие ПК" -> pcImages
-            "Телевизоры" -> tvImages
-            else -> phoneImages
+            "Женская одежда" -> womenClothingImages
+            "Мужская одежда" -> menClothingImages
+            "Обувь" -> shoesImages
+            "Сумки и рюкзаки" -> bagsImages
+            "Аксессуары" -> accessoriesImages
+            "Верхняя одежда" -> outerwearImages
+            "Спортивная одежда" -> sportImages
+            else -> womenClothingImages
         }
         return pool[index % pool.size]
     }
 
     private fun generateSpecsForSpecificProduct(title: String, category: String, index: Int): Map<String, String> {
         return when {
-            title.contains("iPhone", ignoreCase = true) -> mapOf(
-                "Экран" to "6.1\" Super Retina XDR OLED ProMotion 120Hz",
-                "Процессор" to "Apple A17 Pro (3 нм)",
-                "Память" to "256 GB NVMe / 8 GB RAM",
-                "Камера" to "48 MP + 12 MP + 12 MP (3x оптический зум)",
-                "Корпус" to "Титановые рамки, стекло Ceramic Shield",
-                "Разъем" to "USB-C (до 10 Гбит/с)"
+            title.contains("Nike Air", ignoreCase = true) -> mapOf(
+                "Тип" to "Кроссовки",
+                "Верх" to "Дышащий текстиль с усиленными элементами",
+                "Подошва" to "Амортизирующая пена с воздушной подушкой",
+                "Назначение" to "Бег и повседневная носка",
+                "Размеры" to "36–45"
             )
-            title.contains("Galaxy S24 Ultra", ignoreCase = true) -> mapOf(
-                "Экран" to "6.8\" Dynamic AMOLED 2X 120Hz (2600 нит)",
-                "Процессор" to "Snapdragon 8 Gen 3 for Galaxy",
-                "Память" to "512 GB UFS 4.0 / 12 GB LPDDR5X",
-                "Камера" to "200 MP + 50 MP (5x) + 10 MP (3x) + 12 MP",
-                "Стилус" to "Встроенный S-Pen с Bluetooth",
-                "Батарея" to "5000 mAh, 45W быстрая зарядка"
+            title.contains("Adidas Ultraboost", ignoreCase = true) -> mapOf(
+                "Тип" to "Беговые кроссовки",
+                "Технология" to "BOOST-пена для возврата энергии",
+                "Верх" to "Primeknit — бесшовный вязаный текстиль",
+                "Поддержка стопы" to "Средняя, нейтральная пронация",
+                "Размеры" to "36–46"
             )
-            title.contains("Xiaomi 14 Ultra", ignoreCase = true) -> mapOf(
-                "Экран" to "6.73\" LTPO AMOLED WQHD+ 120Hz",
-                "Оптика" to "Leica Summilux с переменной диафрагмой f/1.63-f/4.0",
-                "Сенсор" to "1-дюймовый Sony LYT-900 (50 MP)",
-                "Процессор" to "Snapdragon 8 Gen 3",
-                "Зарядка" to "90W проводная / 80W беспроводная"
+            title.contains("Levi's", ignoreCase = true) -> mapOf(
+                "Тип" to "Джинсы",
+                "Материал" to "100% хлопковый деним",
+                "Фасон" to "Classic Fit, прямые",
+                "Посадка" to "Стандартная, средняя талия",
+                "Размеры" to "25–38 (W), 30–34 (L)"
             )
-            title.contains("MacBook Pro", ignoreCase = true) -> mapOf(
-                "Экран" to "16.2\" Liquid Retina XDR 3456x2234 120Hz",
-                "Чип" to "Apple M3 Max (16 ядер CPU, 40 ядер GPU)",
-                "Память" to "36 GB объединенной памяти, 1 TB SSD",
-                "Автономность" to "до 22 часов воспроизведения видео",
-                "Порты" to "3x Thunderbolt 4, HDMI, SDXC, MagSafe 3"
+            title.contains("Zara", ignoreCase = true) -> mapOf(
+                "Тип" to "Женское платье",
+                "Материал" to "Лёгкая вискоза",
+                "Силуэт" to "Приталенный, миди",
+                "Сезон" to "Лето / демисезон",
+                "Размеры" to "XS–XL"
             )
-            title.contains("MacBook Air", ignoreCase = true) -> mapOf(
-                "Экран" to "15.3\" Liquid Retina 500 нит",
-                "Чип" to "Apple M3 (8 CPU / 10 GPU)",
-                "Память" to "16 GB RAM / 512 GB SSD",
-                "Охлаждение" to "Бесшумное пассивное (без вентиляторов)",
-                "Вес" to "1.51 кг"
+            title.contains("H&M", ignoreCase = true) -> mapOf(
+                "Тип" to "Базовая футболка",
+                "Состав" to "95% хлопок, 5% эластан",
+                "Крой" to "Regular Fit, круглый вырез",
+                "Уход" to "Машинная стирка при 40°C",
+                "Размеры" to "XS–XXL"
             )
-            title.contains("RTX 4090", ignoreCase = true) -> mapOf(
-                "Видеопамять" to "24 GB GDDR6X 384-bit",
-                "Частота ядра" to "до 2520 МГц в Boost",
-                "Ядра CUDA" to "16384 ядра",
-                "Технологии" to "DLSS 3.5, трассировка лучей 3-го поколения",
-                "TDP" to "450W (рекомендуется БП от 1000W)"
+            title.contains("Uniqlo", ignoreCase = true) -> mapOf(
+                "Тип" to "Рубашка оксфорд",
+                "Ткань" to "100% хлопок оксфорд",
+                "Крой" to "Relaxed Fit",
+                "Манжеты" to "На пуговицах, регулируемые",
+                "Размеры" to "S–XXL"
             )
-            title.contains("Ryzen 7 7800X3D", ignoreCase = true) -> mapOf(
-                "Сокет" to "AM5",
-                "Ядра / Потоки" to "8 ядер / 16 потоков",
-                "Кэш" to "96 MB 3D V-Cache (L3 кэш 104 MB суммарно)",
-                "Частота" to "4.2 ГГц базовой / 5.0 ГГц Turbo",
-                "TDP" to "120W"
+            title.contains("The North Face", ignoreCase = true) -> mapOf(
+                "Тип" to "Куртка",
+                "Мембрана" to "DRYVENT — ветро- и водозащита",
+                "Утеплитель" to "Synthetic 100g",
+                "Капюшон" to "Регулируемый, съёмный",
+                "Размеры" to "XS–XL"
             )
-            title.contains("AirPods Max", ignoreCase = true) -> mapOf(
-                "Тип" to "Полноразмерные беспроводные наушники",
-                "Звук" to "Apple H1 в каждом наушнике, Spatial Audio",
-                "Шумоподавление" to "Активное ANC + режим Прозрачности",
-                "Материал" to "Анодированный алюминий и дышащая сетка"
-            )
-            title.contains("AirPods Pro 2", ignoreCase = true) -> mapOf(
-                "Чип" to "Apple H2 с улучшенным шумоподавлением в 2x",
-                "Кейс" to "MagSafe со спикером и чипом U1 (Find My)",
-                "Автономность" to "до 6 часов (до 30 часов с кейсом)",
-                "Защита" to "IP54 от пыли и воды"
-            )
-            title.contains("Watch Ultra", ignoreCase = true) -> mapOf(
-                "Корпус" to "49-мм аэрокосмический титан",
-                "Яркость экрана" to "до 3000 нит на солнце",
-                "Погружение" to "Сертификат глубиномера EN13319 до 40 м",
-                "GPS" to "Двухчастотный L1 + L5 точный трекинг"
+            title.contains("Timberland", ignoreCase = true) -> mapOf(
+                "Тип" to "Ботинки",
+                "Материал" to "Натуральный водоотталкивающая кожа",
+                "Подошва" to "Рифлёная резина, амортизация",
+                "Сезон" to "Демисезон / зима",
+                "Размеры" to "39–46"
             )
             else -> mapOf(
                 "Категория" to category,
-                "Ревизия" to "2026 Edition (Part #${index + 1})",
-                "Гарантия" to "2 года официальной гарантии",
-                "Сертификация" to "EAC / Ростест"
+                "Состав" to "Хлопок 60%, полиэстер 35%, эластан 5%",
+                "Сезон" to "Круглогодичный (Part #${index + 1})",
+                "Размеры" to "XS–XXL",
+                "Уход" to "Машинная стирка при 30°C"
             )
         }
     }
@@ -166,7 +160,7 @@ object AppStateRepository {
                     Product(
                         id = "${category}_${i + 1}",
                         title = title,
-                        description = "Оригинальный товар «$title» от авторизованного поставщика. Официальная сертификация EAC и заводская гарантия.",
+                        description = "Оригинальный товар «$title» от проверенного поставщика. Сертифицированная продукция и гарантия качества.",
                         price = price,
                         imageUrl = getCategoryImageUrl(category, i),
                         category = category,
@@ -176,44 +170,49 @@ object AppStateRepository {
             }
         }
 
-        generateList("Смартфоны", 42, listOf(
-            "Apple iPhone 15 Pro 256GB" to 119990.0,
-            "Samsung Galaxy S24 Ultra" to 109990.0,
-            "Xiaomi 14 Ultra Leica" to 89990.0,
-            "Google Pixel 8 Pro" to 78990.0,
-            "POCO F6 Pro 12/512GB" to 44990.0
+        generateList("Женская одежда", 42, listOf(
+            "Платье миди Zara Elegance" to 7990.0,
+            "Блузка шёлковая Sofia" to 5490.0,
+            "Юбка-карандаш Milano" to 4990.0,
+            "Свитер кашемировый Cashmere Soft" to 12990.0,
+            "H&M Базовая футболка Organic" to 1990.0
         ))
-        generateList("Ноутбуки", 28, listOf(
-            "Apple MacBook Air 15\" M3" to 142990.0,
-            "Apple MacBook Pro 16\" M3 Max" to 319990.0,
-            "ASUS ROG Zephyrus G16" to 189990.0,
-            "HUAWEI MateBook D 16" to 62990.0
+        generateList("Мужская одежда", 32, listOf(
+            "Рубашка оксфорд Uniqlo Classic" to 4990.0,
+            "Джинсы Levi's 501 Original" to 8990.0,
+            "Худи оверсайз Street Cozy" to 5990.0,
+            "Чиносы Slim Fit Urban" to 6490.0
         ))
-        generateList("Планшеты", 19, listOf(
-            "Apple iPad Pro 13\" M4 OLED" to 139990.0,
-            "Samsung Galaxy Tab S9" to 99990.0,
-            "Xiaomi Pad 6S Pro" to 54990.0
+        generateList("Обувь", 38, listOf(
+            "Кроссовки Nike Air Max 270" to 14990.0,
+            "Кроссовки Adidas Ultraboost Light" to 17990.0,
+            "Ботинки Timberland Premium 6 Inch" to 21990.0,
+            "Лоферы кожаные Oxford Lux" to 12990.0,
+            "Кеды Converse Chuck Taylor" to 7990.0
         ))
-        generateList("Аудио и наушники", 35, listOf(
-            "Sony WH-1000XM5 ANC" to 34990.0,
-            "Apple AirPods Pro 2 MagSafe" to 22990.0,
-            "Apple AirPods Max USB-C" to 59990.0,
-            "Marshall Major IV Black" to 12990.0
+        generateList("Сумки и рюкзаки", 24, listOf(
+            "Рюкзак городской TrekLite 25L" to 6990.0,
+            "Сумка кросс-боди Mini Cross Leather" to 9990.0,
+            "Шоппер канвас Everyday Tote" to 3990.0,
+            "Дипломат кожаный Business Pro" to 15990.0
         ))
-        generateList("Гаджеты и часы", 24, listOf(
-            "Apple Watch Ultra 2 Titanium" to 82990.0,
-            "Samsung Galaxy Watch 6 Classic" to 29990.0,
-            "HUAWEI Watch GT 4 46mm" to 16990.0
+        generateList("Аксессуары", 28, listOf(
+            "Часы классические Minimal Chrono" to 19990.0,
+            "Очки солнцезащитные Aviator Gold" to 8990.0,
+            "Ремень кожаный Classic Brown" to 4490.0,
+            "Шарф шерстяной Winter Wool" to 3490.0
         ))
-        generateList("Комплектующие ПК", 56, listOf(
-            "NVIDIA GeForce RTX 4090 24GB" to 199990.0,
-            "AMD Ryzen 7 7800X3D AM5" to 43990.0,
-            "Samsung 990 PRO 2TB NVMe" to 21990.0
+        generateList("Верхняя одежда", 22, listOf(
+            "Куртка The North Face Nuptse 700" to 24990.0,
+            "Пуховик зимский Arctic Down" to 18990.0,
+            "Тренч классический London Beige" to 13990.0,
+            "Ветровка лёгкая Windbreak Sport" to 6990.0
         ))
-        generateList("Телевизоры", 15, listOf(
-            "LG OLED G3 65\" 4K 120Hz" to 239990.0,
-            "TCL Mini-LED 65\" 144Hz" to 84990.0,
-            "Xiaomi TV A Pro 55\" 4K" to 39990.0
+        generateList("Спортивная одежда", 26, listOf(
+            "Леггинсы тренировочные PowerFlex" to 5490.0,
+            "Костюм спортивный Jersey Team Set" to 8990.0,
+            "Шорты беговые Aero Run" to 3490.0,
+            "Олимпийка ретро Track Jacket 90s" to 7490.0
         ))
 
         return list

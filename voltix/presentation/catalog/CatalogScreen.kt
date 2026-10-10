@@ -31,13 +31,13 @@ fun CatalogScreen(
     val allProducts by AppStateRepository.products.collectAsState()
 
     val categories = listOf(
-        CatalogCategory("Смартфоны"),
-        CatalogCategory("Ноутбуки"),
-        CatalogCategory("Планшеты"),
-        CatalogCategory("Аудио и наушники"),
-        CatalogCategory("Гаджеты и часы"),
-        CatalogCategory("Комплектующие ПК"),
-        CatalogCategory("Телевизоры")
+        CatalogCategory("Женская одежда"),
+        CatalogCategory("Мужская одежда"),
+        CatalogCategory("Обувь"),
+        CatalogCategory("Сумки и рюкзаки"),
+        CatalogCategory("Аксессуары"),
+        CatalogCategory("Верхняя одежда"),
+        CatalogCategory("Спортивная одежда")
     )
 
     Column(
