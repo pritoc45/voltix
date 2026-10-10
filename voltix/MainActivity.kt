@@ -205,6 +205,9 @@ fun MainAppHost() {
                 ProductDetailScreen(
                     product = product,
                     onBackClick = { navController.popBackStack() },
+                    onProductClick = { productId ->
+                        navController.navigate("product_detail/$productId")
+                    },
                     onAddToCart = { item ->
                         AppStateRepository.addToCart(item)
                         coroutineScope.launch {

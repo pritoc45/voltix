@@ -1,7 +1,10 @@
 package com.example.voltix.presentation.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,7 +57,8 @@ fun ProductDetailScreen(
     product: Product,
     onBackClick: () -> Unit,
     onAddToCart: (Product) -> Unit,
-    onToggleFavorite: (Product) -> Unit
+    onToggleFavorite: (Product) -> Unit,
+    onProductClick: (String) -> Unit = {}
 ) {
     val favoriteList by AppStateRepository.favoriteItems.collectAsState()
     val isFav = favoriteList.any { it.id == product.id }
@@ -62,6 +66,9 @@ fun ProductDetailScreen(
     var selectedSize by remember(product.id) { mutableStateOf<String?>(null) }
     var selectedColor by remember(product.id) { mutableStateOf<String?>(null) }
     val reviews = remember(product.id) { AppStateRepository.getProductReviews(product.id) }
+    // Рекомендации: «Подходит к этому» и «Похожие товары»
+    val matchingProducts = remember(product.id) { AppStateRepository.getMatchingProducts(product) }
+    val similarProducts = remember(product.id) { AppStateRepository.getSimilarProducts(product) }
 
     Scaffold(
         topBar = {
@@ -387,7 +394,188 @@ fun ProductDetailScreen(
                 }
             }
 
+            // ─── Подходит к этому (рекомендации стилиста) ───
+            if (matchingProducts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Подходит к «${product.title}»",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E1E1E)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Стилистически сочетающиеся товары, чтобы собрать полный образ",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalRecommendationRow(
+                    products = matchingProducts,
+                    onProductClick = onProductClick,
+                    onAddToCart = onAddToCart
+                )
+            }
+
+            // ─── Похожие товары ───
+            if (similarProducts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Похожие товары",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E1E1E)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalRecommendationRow(
+                    products = similarProducts,
+                    onProductClick = onProductClick,
+                    onAddToCart = onAddToCart
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun HorizontalRecommendationRow(
+    products: List<Product>,
+    onProductClick: (String) -> Unit,
+    onAddToCart: (Product) -> Unit
+) {
+    val favoriteList by AppStateRepository.favoriteItems.collectAsState()
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        items(products, key = { it.id }) { rec ->
+            val isFav = favoriteList.any { it.id == rec.id }
+            Card(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable { onProductClick(rec.id) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        AsyncImage(
+                            model = rec.imageUrl,
+                            contentDescription = rec.title,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(VoltixBackground)
+                        )
+                        if (rec.discountPercent > 0) {
+                            Surface(
+                                color = VoltixOrange,
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(4.dp)
+                            ) {
+                                Text(
+                                    text = "-${rec.discountPercent}%",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = { AppStateRepository.toggleFavorite(rec) },
+                            modifier = Modifier
+                                .size(28.dp)
+                                .align(Alignment.TopEnd)
+                        ) {
+                            Icon(
+                                imageVector = if (isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (isFav) VoltixOrange else Color.Gray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = rec.title,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1E1E1E),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = rec.category,
+                        fontSize = 10.sp,
+                        color = Color.Gray,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = formatPrice(rec.price),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = VoltixTeal
+                        )
+                        if (rec.oldPrice != null) {
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = formatPrice(rec.oldPrice),
+                                fontSize = 10.sp,
+                                color = Color.LightGray,
+                                textDecoration = TextDecoration.LineThrough
+                            )
+                        }
+                    }
+                    if (rec.rating > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "%.1f".format(rec.rating),
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Button(
+                        onClick = { onAddToCart(rec) },
+                        enabled = rec.isAvailable && AppStateRepository.canAddToCart(rec),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = VoltixTeal,
+                            disabledContainerColor = Color(0xFFEEEEEE),
+                            disabledContentColor = Color.Gray
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().height(32.dp)
+                    ) {
+                        Text(
+                            text = if (rec.isAvailable) "В корзину" else "Нет",
+                            fontSize = 11.sp,
+                            color = if (rec.isAvailable) Color.White else Color.Gray,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }

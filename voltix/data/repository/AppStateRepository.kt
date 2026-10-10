@@ -357,6 +357,76 @@ object AppStateRepository {
 
     fun getProductReviews(productId: String): List<ProductReview> = demoReviews[productId] ?: emptyList()
 
+    // ─── Рекомендации ────────────────────────────────────────────────
+    // Стилистические группы товаров для блока «Подходит к этому»:
+    // по ключевым словам названия определяем, что это за вещь, и подбираем
+    // сочетающиеся категории (классические fashion-комбинации).
+    private data class StyleGroup(val keywords: List<String>, val matches: List<String>)
+
+    private val styleGroups: List<StyleGroup> = listOf(
+        StyleGroup(
+            listOf("платье", "sunny floral"),
+            listOf("Обувь", "Аксессуары", "Верхняя одежда", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("блузка", "рубашка", "оксфорд", "sofia"),
+            listOf("Мужская одежда", "Женская одежда", "Обувь", "Аксессуары", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("джинсы", "501", "леви", "чинос", "брюк"),
+            listOf("Мужская одежда", "Верхняя одежда", "Обувь", "Аксессуары", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("худи", "свитер", "кашемир", "свитшот", "кофта", "олимпийка", "jersey"),
+            listOf("Мужская одежда", "Женская одежда", "Обувь", "Детская одежда", "Аксессуары")
+        ),
+        StyleGroup(
+            listOf("куртка", "пуховик", "тренч", "ветровка", "nuptse", "shell", "арктик"),
+            listOf("Обувь", "Аксессуары", "Сумки и рюкзаки", "Мужская одежда", "Женская одежда")
+        ),
+        StyleGroup(
+            listOf("леггинс", "шорты", "спортивн", "aero run", "powerflex", "track"),
+            listOf("Обувь", "Сумки и рюкзаки", "Аксессуары", "Мужская одежда", "Женская одежда")
+        ),
+        StyleGroup(
+            listOf("юбка", "milano"),
+            listOf("Обувь", "Аксессуары", "Верхняя одежда", "Сумки и рюкзаки")
+        )
+    )
+
+    /** Товары, стилистически подходящие к выбранному (для блока «Подходит к этому»). */
+    fun getMatchingProducts(product: Product, limit: Int = 10): List<Product> {
+        val lowerTitle = product.title.lowercase()
+        val group = styleGroups.firstOrNull { g -> g.keywords.any { lowerTitle.contains(it) } }
+        val matchCategories = group?.matches ?: listOf(product.category)
+
+        return _products.value
+            .filter { it.id != product.id && it.isAvailable && it.category in matchCategories }
+            .sortedWith(
+                compareByDescending<Product> { it.rating }
+                    .thenByDescending { it.discountPercent }
+                    .thenByDescending { it.reviewsCount }
+            )
+            .take(limit)
+    }
+
+    /** Похожие товары: та же категория, похожий ценовой диапазон (±40%). */
+    fun getSimilarProducts(product: Product, limit: Int = 6): List<Product> {
+        val minPrice = product.price * 0.6
+        val maxPrice = product.price * 1.4
+        return _products.value
+            .filter {
+                it.id != product.id &&
+                it.category == product.category &&
+                it.price in minPrice..maxPrice
+            }
+            .sortedByDescending { it.rating }
+            .ifEmpty {
+                _products.value.filter { it.id != product.id && it.category == product.category }
+            }
+            .take(limit)
+    }
+
     fun getProductById(id: String): Product {
         return _products.value.find { it.id == id } ?: _products.value.first()
     }
