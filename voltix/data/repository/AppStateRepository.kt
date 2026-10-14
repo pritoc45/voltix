@@ -481,6 +481,13 @@ object AppStateRepository {
         return _products.value.find { it.id == id } ?: _products.value.first()
     }
 
+    // Обновить фото товара (например, продавец загружает своё изображение из галереи)
+    fun updateProductImage(productId: String, newImageUrl: String) {
+        _products.update { list -> list.map { if (it.id == productId) it.copy(imageUrl = newImageUrl) else it } }
+        _favoriteItems.update { list -> list.map { if (it.id == productId) it.copy(imageUrl = newImageUrl) else it } }
+        _cartItems.update { list -> list.map { if (it.product.id == productId) it.copy(product = it.product.copy(imageUrl = newImageUrl)) else it } }
+    }
+
     fun addCustomProduct(title: String, price: Double, category: String) {
         val sizes = getSizesForCategory(category)
         val newProduct = Product(

@@ -16,6 +16,7 @@ class UserPreferencesRepository(private val context: Context) {
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
         val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_ROLE = stringPreferencesKey("user_role")
+        val USER_AVATAR_URI = stringPreferencesKey("user_avatar_uri")
     }
 
     val isLoggedIn: Flow<Boolean> = context.userDataStore.data.map { preferences ->
@@ -35,6 +36,17 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.IS_LOGGED_IN] = true
             preferences[PreferencesKeys.USER_EMAIL] = email
             preferences[PreferencesKeys.USER_ROLE] = role
+        }
+    }
+
+    // Пользователь может выбрать своё фото профиля из галереи — URI сохраняется между запусками
+    val userAvatarUri: Flow<String> = context.userDataStore.data.map { preferences ->
+        preferences[PreferencesKeys.USER_AVATAR_URI] ?: ""
+    }
+
+    suspend fun saveAvatarUri(uri: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferencesKeys.USER_AVATAR_URI] = uri
         }
     }
 

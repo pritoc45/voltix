@@ -1,6 +1,11 @@
 package com.example.voltix.presentation.profile
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -13,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
@@ -25,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.voltix.data.repository.AppStateRepository
 import com.example.voltix.data.repository.OrderStage
 import com.example.voltix.data.repository.UserPreferencesRepository
@@ -68,6 +76,25 @@ fun ProfileScreen(
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showAddProductDialog by remember { mutableStateOf(false) }
+
+    // Своё фото профиля: URI из галереи сохраняется в DataStore и переживает перезапуск приложения
+    val savedAvatarUri by userPrefs.userAvatarUri.collectAsState(initial = "")
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            // Даём постоянный доступ к выбранному файлу после закрытия activity-пикера
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // Некоторые OEM-прошивки не дают persistable-разрешение — фото всё равно загрузится в текущей сессии
+            }
+            coroutineScope.launch { userPrefs.saveAvatarUri(uri.toString()) }
+        }
+    }
 
     val orders by AppStateRepository.orders.collectAsState()
     val userReviews by AppStateRepository.userReviews.collectAsState()
@@ -165,22 +192,74 @@ fun ProfileScreen(
                         .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE0E0E0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "Avatar",
-                            tint = Color(0xFF9E9E9E),
-                            modifier = Modifier.size(48.dp)
-                        )
+                    // Аватар: своё фото из галереи, нажми чтобы изменить (кнопка с камерой внизу справа)
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE0E0E0))
+                                .border(3.dp, VoltixOrange.copy(alpha = 0.85f), CircleShape)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (savedAvatarUri.isNotBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(Uri.parse(savedAvatarUri))
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото профиля",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(86.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = "Avatar",
+                                    tint = Color(0xFF9E9E9E),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+
+                        // Кнопка-бейдж «изменить фото»
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(VoltixOrange)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddAPhoto,
+                                contentDescription = "Изменить фото",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (savedAvatarUri.isNotBlank()) "Нажмите на фото, чтобы изменить" else "Нажмите на аватар, чтобы загрузить своё фото",
+                        fontSize = 11.sp,
+                        color = Color(0xFF757575)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = nameState,
@@ -601,6 +680,72 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+                    // Превью аватара прямо в диалоге + кнопка выбора своего фото из галереи
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            modifier = Modifier
+                                .size(76.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE0E0E0))
+                                .border(2.dp, VoltixOrange.copy(alpha = 0.85f), CircleShape)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (savedAvatarUri.isNotBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(Uri.parse(savedAvatarUri))
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото профиля",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9E9E9E),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(VoltixOrange)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddAPhoto,
+                                contentDescription = "Выбрать фото",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Нажмите на фото, чтобы выбрать своё изображение из галереи",
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     OutlinedTextField(
                         value = tempEmail,
                         onValueChange = { tempEmail = it },
@@ -678,6 +823,11 @@ fun ProfileScreen(
         var title by remember { mutableStateOf("") }
         var price by remember { mutableStateOf("") }
         var category by remember { mutableStateOf("") }
+        // Фото товара: продавец может загрузить своё изображение из галереи
+        var productPhotoUri by remember { mutableStateOf<Uri?>(null) }
+        val productPhotoPicker = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { uri: Uri? -> if (uri != null) productPhotoUri = uri }
 
         Dialog(onDismissRequest = { showAddProductDialog = false }) {
             Surface(
@@ -709,6 +859,57 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(18.dp))
+
+                    // Загрузка своего фото товара (по умолчанию — стоковое изображение категории)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(110.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF3F4F6))
+                            .border(1.5.dp, Color(0xFFD1D5DB), RoundedCornerShape(12.dp))
+                            .clickable {
+                                productPhotoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (productPhotoUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(productPhotoUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Фото товара",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Text(
+                                text = "Изменить фото",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                                    .padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AddAPhoto,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9CA3AF),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("Загрузить фото товара", fontSize = 12.sp, color = Color(0xFF9CA3AF))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     OutlinedTextField(
                         value = title,
@@ -750,6 +951,13 @@ fun ProfileScreen(
                                     price = priceVal,
                                     category = if (category.isNotBlank()) category else "Женская одежда"
                                 )
+                                // Если продавец загрузил своё фото — подменяем им стоковое изображение категории
+                                if (productPhotoUri != null) {
+                                    val newest = AppStateRepository.products.value.firstOrNull()
+                                    if (newest != null) {
+                                        AppStateRepository.updateProductImage(newest.id, productPhotoUri.toString())
+                                    }
+                                }
                                 showAddProductDialog = false
                             }
                         },

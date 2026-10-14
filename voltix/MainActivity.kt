@@ -4,19 +4,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -33,6 +38,7 @@ import com.example.voltix.presentation.home.ProductDetailScreen
 import com.example.voltix.presentation.navigation.BottomNavItem
 import com.example.voltix.presentation.navigation.Screen
 import com.example.voltix.presentation.profile.ProfileScreen
+import com.example.voltix.ui.theme.VoltixOrange
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -78,39 +84,94 @@ fun MainAppHost() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(
-                    containerColor = Color(0xFF1E1E1E),
+                // Красивая нижняя панель: активная вкладка подсвечивается своим цветом —
+                // избранное красным сердцем, корзина оранжевой тележкой и т.д.
+                Surface(
+                    color = Color(0xFF1C1C22),
                     tonalElevation = 0.dp,
-                    modifier = Modifier.height(64.dp)
+                    shadowElevation = 12.dp,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    val navItems = BottomNavItem.items
-                    for (i in navItems.indices) {
-                        val item = navItems[i]
-                        val isSelected = currentRoute?.startsWith(item.screen.route) == true
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = {
-                                if (!isSelected) {
-                                    navController.navigate(item.screen.route) {
-                                        popUpTo(Screen.Home.route) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .height(68.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val navItems = BottomNavItem.items
+                        val cartCount by AppStateRepository.cartItems.collectAsState()
+                        for (i in navItems.indices) {
+                            val item = navItems[i]
+                            val isSelected = currentRoute?.startsWith(item.screen.route) == true
+                            Box(modifier = Modifier.weight(1f)) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(18.dp))
+                                        .background(
+                                            if (isSelected) item.accentColor.copy(alpha = 0.18f)
+                                            else Color.Transparent
+                                        )
+                                        .clickable {
+                                            if (!isSelected) {
+                                                navController.navigate(item.screen.route) {
+                                                    popUpTo(Screen.Home.route) { saveState = true }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        }
+                                        .padding(vertical = 9.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    // Пульсация при выборе вкладки + смена outline-иконки на filled
+                                    AnimatedContent(
+                                        targetState = isSelected,
+                                        transitionSpec = {
+                                            scaleIn(initialScale = 0.7f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 600f)) +
+                                                fadeIn() togetherWith
+                                                scaleOut(targetScale = 0.7f) + fadeOut()
+                                        },
+                                        label = "navIcon"
+                                    ) { selected ->
+                                        Icon(
+                                            imageVector = if (selected) item.selectedIcon else item.icon,
+                                            contentDescription = item.title,
+                                            tint = if (selected) item.accentColor else Color(0xFF8A8A93),
+                                            modifier = Modifier.size(25.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = item.title,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) item.accentColor else Color(0xFF8A8A93)
+                                    )
+                                }
+                                // Счётчик товаров в корзине на вкладке «Корзина»
+                                if (item is BottomNavItem.Cart && cartCount.sumOf { it.count } > 0) {
+                                    val badgeCount = cartCount.sumOf { it.count }.coerceAtMost(99)
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(top = 2.dp, end = 14.dp)
+                                            .background(VoltixOrange, CircleShape)
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = badgeCount.toString(),
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = null,
-                                    tint = if (isSelected) Color.White else Color(0xFF757575),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            },
-                            alwaysShowLabel = false,
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = Color.Transparent
-                            )
-                        )
+                            }
+                        }
                     }
                 }
             }
