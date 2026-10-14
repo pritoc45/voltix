@@ -24,6 +24,8 @@ import com.example.voltix.ui.theme.VoltixOrange
 import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 data class CartItem(
     val product: Product,
     val count: Int = 1
@@ -34,6 +36,8 @@ data class CartItem(
 fun CartScreen(
     onNavigateToCheckout: () -> Unit
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val cartItems by AppStateRepository.cartItems.collectAsState()
     val totalAmount = cartItems.sumOf { it.product.price * it.count }
 
@@ -47,7 +51,7 @@ fun CartScreen(
             text = "Корзина",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E1E1E)
+            color = palette.textPrimary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -81,18 +85,18 @@ fun CartScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFFE53935))
+                                    .background(palette.red)
                                     .padding(horizontal = 24.dp),
                                 contentAlignment = Alignment.CenterEnd
                             ) {
-                                Text("Удалить", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Удалить", color = onAccentWhite(), fontWeight = FontWeight.Bold)
                             }
                         }
                     ) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = palette.card),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Row(
@@ -107,7 +111,7 @@ fun CartScreen(
                                     modifier = Modifier
                                         .size(76.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color(0xFFF0F0F0))
+                                        .background(palette.chipUnselected)
                                 )
 
                                 Spacer(modifier = Modifier.width(14.dp))
@@ -117,7 +121,7 @@ fun CartScreen(
                                         text = item.product.title,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1E1E1E),
+                                        color = palette.textPrimary,
                                         maxLines = 1
                                     )
                                     // Экономия по скидке
@@ -126,14 +130,14 @@ fun CartScreen(
                                             Text(
                                                 text = formatPrice(item.product.price),
                                                 fontSize = 17.sp,
-                                                color = VoltixOrange,
+                                                color = palette.orange,
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = formatPrice(item.product.oldPrice!!),
                                                 fontSize = 12.sp,
-                                                color = Color.LightGray,
+                                                color = palette.divider,
                                                 textDecoration = TextDecoration.LineThrough
                                             )
                                         }
@@ -141,7 +145,7 @@ fun CartScreen(
                                         Text(
                                             text = formatPrice(item.product.price),
                                             fontSize = 17.sp,
-                                            color = VoltixOrange,
+                                            color = palette.orange,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -150,14 +154,14 @@ fun CartScreen(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
-                                        .background(Color(0xFFF4F6F6), RoundedCornerShape(10.dp))
+                                        .background(palette.chipUnselected, RoundedCornerShape(10.dp))
                                         .padding(horizontal = 4.dp, vertical = 2.dp)
                                 ) {
                                     IconButton(
                                         onClick = { AppStateRepository.decrementCartItem(item.product.id) },
                                         modifier = Modifier.size(28.dp)
                                     ) {
-                                        Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = VoltixTeal)
+                                        Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = palette.teal)
                                     }
 
                                     Text(
@@ -165,7 +169,7 @@ fun CartScreen(
                                         modifier = Modifier.padding(horizontal = 6.dp),
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1E1E1E)
+                                        color = palette.textPrimary
                                     )
 
                                     IconButton(
@@ -174,7 +178,7 @@ fun CartScreen(
                                         modifier = Modifier.size(28.dp)
                                     ) {
                                         Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                                            color = if (AppStateRepository.canAddToCart(item.product)) VoltixTeal else Color.LightGray)
+                                            color = if (AppStateRepository.canAddToCart(item.product)) palette.teal else palette.divider)
                                     }
                                 }
                             }
@@ -188,7 +192,7 @@ fun CartScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = palette.card),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -202,8 +206,8 @@ fun CartScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Ваша экономия:", fontSize = 13.sp, color = Color(0xFF2E7D32))
-                            Text("−${formatPrice(savings)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF2E7D32))
+                            Text("Ваша экономия:", fontSize = 13.sp, color = palette.green)
+                            Text("−${formatPrice(savings)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = palette.green)
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -216,13 +220,13 @@ fun CartScreen(
                         Text(
                             text = "Итого к оплате:",
                             fontSize = 15.sp,
-                            color = Color.Gray
+                            color = palette.textSecondary
                         )
                         Text(
                             text = formatPrice(totalAmount),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = VoltixOrange
+                            color = palette.orange
                         )
                     }
 
@@ -233,14 +237,14 @@ fun CartScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = VoltixTeal),
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.teal),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = "К оформлению",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = onAccentWhite()
                         )
                     }
                 }
@@ -251,6 +255,7 @@ fun CartScreen(
 
 @Composable
 fun EmptyCartState() {
+    val palette = voltixPalette()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -261,7 +266,7 @@ fun EmptyCartState() {
         Surface(
             modifier = Modifier.size(96.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFFE9F1F2)
+            color = palette.tealSoft
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -277,7 +282,7 @@ fun EmptyCartState() {
             text = "Корзина пуста",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E1E1E)
+            color = palette.textPrimary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -285,7 +290,7 @@ fun EmptyCartState() {
         Text(
             text = "Посмотрите предложения в каталоге,\nчтобы наполнить корзину",
             fontSize = 14.sp,
-            color = Color.Gray,
+            color = palette.textSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )

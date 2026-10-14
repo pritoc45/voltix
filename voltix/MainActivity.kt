@@ -38,14 +38,22 @@ import com.example.voltix.presentation.home.ProductDetailScreen
 import com.example.voltix.presentation.navigation.BottomNavItem
 import com.example.voltix.presentation.navigation.Screen
 import com.example.voltix.presentation.profile.ProfileScreen
+import com.example.voltix.ui.theme.ThemeMode
 import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.ui.theme.VoltixTheme
+import com.example.voltix.ui.theme.voltixPalette
 import kotlinx.coroutines.launch
+import com.example.voltix.ui.theme.onAccentWhite
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            // Тема читается из DataStore; до загрузки используем системный режим
+            val context = LocalContext.current
+            val userPrefs = remember { UserPreferencesRepository(context) }
+            val savedTheme by userPrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+            VoltixTheme(themeMode = savedTheme) {
                 MainAppHost()
             }
         }
@@ -55,16 +63,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppHost() {
     val context = LocalContext.current
+    val palette = voltixPalette()
     val userPrefs = remember { UserPreferencesRepository(context) }
     val savedEmail by userPrefs.userEmail.collectAsState(initial = null)
 
     // Пока читаем DataStore при холодном старте, отображаем нейтральный экран загрузки
     if (savedEmail == null) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(palette.background),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF0F3E44))
+            CircularProgressIndicator(color = palette.teal)
         }
         return
     }
@@ -87,7 +98,7 @@ fun MainAppHost() {
                 // Красивая нижняя панель: активная вкладка подсвечивается своим цветом —
                 // избранное красным сердцем, корзина оранжевой тележкой и т.д.
                 Surface(
-                    color = Color(0xFF1C1C22),
+                    color = palette.bottomBar,
                     tonalElevation = 0.dp,
                     shadowElevation = 12.dp,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -139,7 +150,7 @@ fun MainAppHost() {
                                         Icon(
                                             imageVector = if (selected) item.selectedIcon else item.icon,
                                             contentDescription = item.title,
-                                            tint = if (selected) item.accentColor else Color(0xFF8A8A93),
+                                            tint = if (selected) item.accentColor else palette.navInactive,
                                             modifier = Modifier.size(25.dp)
                                         )
                                     }
@@ -148,7 +159,7 @@ fun MainAppHost() {
                                         text = item.title,
                                         fontSize = 10.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) item.accentColor else Color(0xFF8A8A93)
+                                        color = if (isSelected) item.accentColor else palette.navInactive
                                     )
                                 }
                                 // Счётчик товаров в корзине на вкладке «Корзина»
@@ -158,13 +169,13 @@ fun MainAppHost() {
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
                                             .padding(top = 2.dp, end = 14.dp)
-                                            .background(VoltixOrange, CircleShape)
+                                            .background(palette.orange, CircleShape)
                                             .padding(horizontal = 5.dp, vertical = 1.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = badgeCount.toString(),
-                                            color = Color.White,
+                                            color = onAccentWhite(),
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold
                                         )

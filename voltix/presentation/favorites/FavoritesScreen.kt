@@ -24,12 +24,16 @@ import com.example.voltix.ui.theme.VoltixOrange
 import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
     onProductClick: (String) -> Unit,
     onAddToCart: (Product) -> Unit
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val favoriteList by AppStateRepository.favoriteItems.collectAsState()
 
     Column(
@@ -42,7 +46,7 @@ fun FavoritesScreen(
             text = "Избранное",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E1E1E)
+            color = palette.textPrimary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -76,11 +80,11 @@ fun FavoritesScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFFE53935))
+                                    .background(palette.red)
                                     .padding(horizontal = 24.dp),
                                 contentAlignment = Alignment.CenterEnd
                             ) {
-                                Text("Удалить", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Удалить", color = onAccentWhite(), fontWeight = FontWeight.Bold)
                             }
                         }
                     ) {
@@ -89,7 +93,7 @@ fun FavoritesScreen(
                                 .fillMaxWidth()
                                 .clickable { onProductClick(product.id) },
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = palette.card),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Row(
@@ -104,7 +108,7 @@ fun FavoritesScreen(
                                     modifier = Modifier
                                         .size(80.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color(0xFFF0F0F0))
+                                        .background(palette.chipUnselected)
                                 )
 
                                 Spacer(modifier = Modifier.width(14.dp))
@@ -114,7 +118,7 @@ fun FavoritesScreen(
                                         text = product.title,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1E1E1E),
+                                        color = palette.textPrimary,
                                         maxLines = 1
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -122,7 +126,7 @@ fun FavoritesScreen(
                                         Text(
                                             text = formatPrice(product.price),
                                             fontSize = 17.sp,
-                                            color = VoltixOrange,
+                                            color = palette.orange,
                                             fontWeight = FontWeight.Bold
                                         )
                                         if (product.oldPrice != null && product.discountPercent > 0) {
@@ -131,9 +135,9 @@ fun FavoritesScreen(
                                                 text = "-${product.discountPercent}%",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = onAccentWhite(),
                                                 modifier = Modifier
-                                                    .background(VoltixOrange, RoundedCornerShape(6.dp))
+                                                    .background(palette.orange, RoundedCornerShape(6.dp))
                                                     .padding(horizontal = 5.dp, vertical = 1.dp)
                                             )
                                         }
@@ -144,9 +148,9 @@ fun FavoritesScreen(
                                     onClick = { onAddToCart(product) },
                                     enabled = product.isAvailable && AppStateRepository.canAddToCart(product),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = VoltixTeal,
-                                        disabledContainerColor = Color(0xFFE0E0E0),
-                                        disabledContentColor = Color.Gray
+                                        containerColor = palette.teal,
+                                        disabledContainerColor = palette.divider,
+                                        disabledContentColor = palette.textSecondary
                                     ),
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -164,6 +168,7 @@ fun FavoritesScreen(
 
 @Composable
 fun EmptyFavoritesState() {
+    val palette = voltixPalette()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -174,13 +179,13 @@ fun EmptyFavoritesState() {
         Surface(
             modifier = Modifier.size(96.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFFFFECE8)
+            color = palette.red.copy(alpha = 0.1f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = "❤",
                     fontSize = 44.sp,
-                    color = VoltixOrange
+                    color = palette.orange
                 )
             }
         }
@@ -191,7 +196,7 @@ fun EmptyFavoritesState() {
             text = "В избранном пусто",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E1E1E)
+            color = palette.textPrimary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -199,7 +204,7 @@ fun EmptyFavoritesState() {
         Text(
             text = "Добавляйте понравившиеся товары,\nчтобы не потерять их",
             fontSize = 14.sp,
-            color = Color.Gray,
+            color = palette.textSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )

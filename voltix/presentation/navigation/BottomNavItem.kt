@@ -21,11 +21,11 @@ sealed class BottomNavItem(
     val accentColor: Color,
     val title: String
 ) {
-    object Home : BottomNavItem(Screen.Home, Icons.Outlined.Home, Icons.Filled.Home, Color(0xFF0F3E44), "Главная")
-    object Catalog : BottomNavItem(Screen.Catalog, Icons.Outlined.List, Icons.Filled.List, Color(0xFF2563EB), "Каталог")
-    object Cart : BottomNavItem(Screen.Cart, Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart, Color(0xFFFF5E3A), "Корзина")
-    object Favorites : BottomNavItem(Screen.Favorites, Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite, Color(0xFFE53935), "Избранное")
-    object Profile : BottomNavItem(Screen.Profile, Icons.Outlined.Person, Icons.Filled.Person, Color(0xFF7C3AED), "Профиль")
+    object Home : BottomNavItem(Screen.Home, Icons.Outlined.Home, Icons.Filled.Home, Color(0xFF0F3E44), "Р“Р»Р°РІРЅР°СЏ")
+    object Catalog : BottomNavItem(Screen.Catalog, Icons.Outlined.List, Icons.Filled.List, Color(0xFF2563EB), "РљР°С‚Р°Р»РѕРі")
+    object Cart : BottomNavItem(Screen.Cart, Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart, Color(0xFFFF5E3A), "РљРѕСЂР·РёРЅР°")
+    object Favorites : BottomNavItem(Screen.Favorites, Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite, Color(0xFFE53935), "РР·Р±СЂР°РЅРЅРѕРµ")
+    object Profile : BottomNavItem(Screen.Profile, Icons.Outlined.Person, Icons.Filled.Person, Color(0xFF7C3AED), "РџСЂРѕС„РёР»СЊ")
 
     companion object {
         val items = listOf(Home, Catalog, Cart, Favorites, Profile)

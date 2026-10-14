@@ -17,6 +17,7 @@ class UserPreferencesRepository(private val context: Context) {
         val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_ROLE = stringPreferencesKey("user_role")
         val USER_AVATAR_URI = stringPreferencesKey("user_avatar_uri")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     val isLoggedIn: Flow<Boolean> = context.userDataStore.data.map { preferences ->
@@ -29,6 +30,17 @@ class UserPreferencesRepository(private val context: Context) {
 
     val userRole: Flow<String> = context.userDataStore.data.map { preferences ->
         preferences[PreferencesKeys.USER_ROLE] ?: "BUYER"
+    }
+
+    // Выбранная тема приложения: SYSTEM / LIGHT / DARK — сохраняется между запусками
+    val themeMode: Flow<String> = context.userDataStore.data.map { preferences ->
+        preferences[PreferencesKeys.THEME_MODE] ?: "SYSTEM"
+    }
+
+    suspend fun saveThemeMode(mode: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode
+        }
     }
 
     suspend fun saveSession(email: String, role: String) {
