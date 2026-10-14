@@ -6,6 +6,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.Calendar
+import java.util.Date
+
+enum class OrderStage(val title: String, val description: String) {
+    ASSEMBLING("Заказ собирается", "Собираем и упаковываем ваши товары на складе"),
+    SENT_TO_DELIVERY("Отправляется в доставку", "Коробка передана в службу доставки"),
+    IN_TRANSIT("В пути", "Заказ едет к вам в пункт выдачи или курьером"),
+    ARRIVED("На месте", "Заказ прибыл — можно забирать!"),
+    DELIVERED("Доставлен", "Заказ получен, приятных покупок!")
+}
 
 data class Order(
     val id: String,
@@ -13,8 +23,48 @@ data class Order(
     val deliveryTime: String,
     val items: List<CartItem>,
     val totalPrice: Double,
-    val status: String
-)
+    val status: String,
+    val createdAtMillis: Long = System.currentTimeMillis()
+) {
+    // Статус заказа вычисляется автоматически по времени с момента оплаты.
+    // Для демо стадии сменяются быстро: собран -> отправлен -> в пути -> на месте -> доставлен.
+    val currentStage: OrderStage
+        get() = when {
+            status == OrderStage.DELIVERED.title -> OrderStage.DELIVERED
+            else -> {
+                val minutes = (System.currentTimeMillis() - createdAtMillis) / 60_000L
+                when {
+                    minutes < 1L -> OrderStage.ASSEMBLING
+                    minutes < 3L -> OrderStage.SENT_TO_DELIVERY
+                    minutes < 6L -> OrderStage.IN_TRANSIT
+                    minutes < 10L -> OrderStage.ARRIVED
+                    else -> OrderStage.DELIVERED
+                }
+            }
+        }
+
+    fun stageTimestamp(stage: OrderStage): String {
+        val offsetMinutes = when (stage) {
+            OrderStage.ASSEMBLING -> 0L
+            OrderStage.SENT_TO_DELIVERY -> 1L
+            OrderStage.IN_TRANSIT -> 3L
+            OrderStage.ARRIVED -> 6L
+            OrderStage.DELIVERED -> 10L
+        }
+        val cal = Calendar.getInstance().apply { time = Date(createdAtMillis + offsetMinutes * 60_000L) }
+        return String.format("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+    }
+
+    companion object {
+        val STAGES = listOf(
+            OrderStage.ASSEMBLING,
+            OrderStage.SENT_TO_DELIVERY,
+            OrderStage.IN_TRANSIT,
+            OrderStage.ARRIVED,
+            OrderStage.DELIVERED
+        )
+    }
+}
 
 data class ReviewData(
     val id: String,
@@ -357,8 +407,85 @@ object AppStateRepository {
 
     fun getProductReviews(productId: String): List<ProductReview> = demoReviews[productId] ?: emptyList()
 
+    // ─── Рекомендации ────────────────────────────────────────────────
+    // Стилистические группы товаров для блока «Подходит к этому»:
+    // по ключевым словам названия определяем, что это за вещь, и подбираем
+    // сочетающиеся категории (классические fashion-комбинации).
+    private data class StyleGroup(val keywords: List<String>, val matches: List<String>)
+
+    private val styleGroups: List<StyleGroup> = listOf(
+        StyleGroup(
+            listOf("платье", "sunny floral"),
+            listOf("Обувь", "Аксессуары", "Верхняя одежда", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("блузка", "рубашка", "оксфорд", "sofia"),
+            listOf("Мужская одежда", "Женская одежда", "Обувь", "Аксессуары", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("джинсы", "501", "леви", "чинос", "брюк"),
+            listOf("Мужская одежда", "Верхняя одежда", "Обувь", "Аксессуары", "Сумки и рюкзаки")
+        ),
+        StyleGroup(
+            listOf("худи", "свитер", "кашемир", "свитшот", "кофта", "олимпийка", "jersey"),
+            listOf("Мужская одежда", "Женская одежда", "Обувь", "Детская одежда", "Аксессуары")
+        ),
+        StyleGroup(
+            listOf("куртка", "пуховик", "тренч", "ветровка", "nuptse", "shell", "арктик"),
+            listOf("Обувь", "Аксессуары", "Сумки и рюкзаки", "Мужская одежда", "Женская одежда")
+        ),
+        StyleGroup(
+            listOf("леггинс", "шорты", "спортивн", "aero run", "powerflex", "track"),
+            listOf("Обувь", "Сумки и рюкзаки", "Аксессуары", "Мужская одежда", "Женская одежда")
+        ),
+        StyleGroup(
+            listOf("юбка", "milano"),
+            listOf("Обувь", "Аксессуары", "Верхняя одежда", "Сумки и рюкзаки")
+        )
+    )
+
+    /** Товары, стилистически подходящие к выбранному (для блока «Подходит к этому»). */
+    fun getMatchingProducts(product: Product, limit: Int = 10): List<Product> {
+        val lowerTitle = product.title.lowercase()
+        val group = styleGroups.firstOrNull { g -> g.keywords.any { lowerTitle.contains(it) } }
+        val matchCategories = group?.matches ?: listOf(product.category)
+
+        return _products.value
+            .filter { it.id != product.id && it.isAvailable && it.category in matchCategories }
+            .sortedWith(
+                compareByDescending<Product> { it.rating }
+                    .thenByDescending { it.discountPercent }
+                    .thenByDescending { it.reviewsCount }
+            )
+            .take(limit)
+    }
+
+    /** Похожие товары: та же категория, похожий ценовой диапазон (±40%). */
+    fun getSimilarProducts(product: Product, limit: Int = 6): List<Product> {
+        val minPrice = product.price * 0.6
+        val maxPrice = product.price * 1.4
+        return _products.value
+            .filter {
+                it.id != product.id &&
+                it.category == product.category &&
+                it.price in minPrice..maxPrice
+            }
+            .sortedByDescending { it.rating }
+            .ifEmpty {
+                _products.value.filter { it.id != product.id && it.category == product.category }
+            }
+            .take(limit)
+    }
+
     fun getProductById(id: String): Product {
         return _products.value.find { it.id == id } ?: _products.value.first()
+    }
+
+    // Обновить фото товара (например, продавец загружает своё изображение из галереи)
+    fun updateProductImage(productId: String, newImageUrl: String) {
+        _products.update { list -> list.map { if (it.id == productId) it.copy(imageUrl = newImageUrl) else it } }
+        _favoriteItems.update { list -> list.map { if (it.id == productId) it.copy(imageUrl = newImageUrl) else it } }
+        _cartItems.update { list -> list.map { if (it.product.id == productId) it.copy(product = it.product.copy(imageUrl = newImageUrl)) else it } }
     }
 
     fun addCustomProduct(title: String, price: Double, category: String) {
@@ -443,14 +570,20 @@ object AppStateRepository {
         return _favoriteItems.value.any { it.id == productId }
     }
 
-    fun createOrder(orderId: String, date: String, deliveryTime: String, items: List<CartItem>, total: Double, status: String = "В пути") {
+    // Обновляет список заказов, чтобы Compose пересобрал UI при смене стадии (происходит автоматически по таймеру)
+    fun tickOrderStages() {
+        _orders.update { list -> list.map { it.copy() } }
+    }
+
+    fun createOrder(orderId: String, date: String, deliveryTime: String, items: List<CartItem>, total: Double, status: String = OrderStage.ASSEMBLING.title) {
         val newOrder = Order(
             id = orderId,
             date = date,
             deliveryTime = deliveryTime,
             items = items,
             totalPrice = total,
-            status = status
+            status = status,
+            createdAtMillis = System.currentTimeMillis()
         )
         _orders.update { listOf(newOrder) + it }
 

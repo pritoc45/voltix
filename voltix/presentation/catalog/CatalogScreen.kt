@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.voltix.data.repository.AppStateRepository
+import com.example.voltix.ui.theme.voltixPalette
 
 data class CatalogCategory(
     val name: String
@@ -28,6 +29,7 @@ data class CatalogCategory(
 fun CatalogScreen(
     onCategoryClick: (String) -> Unit
 ) {
+    val palette = voltixPalette()
     val allProducts by AppStateRepository.products.collectAsState()
 
     val categories = listOf(
@@ -44,14 +46,14 @@ fun CatalogScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFAF9FD))
+            .background(palette.background)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Text(
             text = "Каталог товаров",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E1E1E)
+            color = palette.textPrimary
         )
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -70,7 +72,7 @@ fun CatalogScreen(
                         .clickable { onCategoryClick(category.name) },
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFEDE9F5)
+                        containerColor = palette.chipUnselected
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -85,13 +87,13 @@ fun CatalogScreen(
                             text = category.name,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF262626)
+                            color = palette.textPrimary
                         )
 
                         Text(
                             text = "$count шт.",
                             fontSize = 13.sp,
-                            color = Color(0xFF8B7AA8),
+                            color = palette.purple,
                             fontWeight = FontWeight.Medium
                         )
                     }

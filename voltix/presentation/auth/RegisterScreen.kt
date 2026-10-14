@@ -30,6 +30,8 @@ import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixTeal
 import kotlinx.coroutines.launch
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 enum class UserRole(val title: String) {
     SELLER("Продавец"),
     BUYER("Покупатель")
@@ -40,6 +42,8 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val userPrefs = remember { UserPreferencesRepository(context) }
@@ -55,7 +59,7 @@ fun RegisterScreen(
     val isPasswordValid = ValidationUtils.isValidPassword(password)
     val isFormValid = name.isNotBlank() && isEmailValid && isPasswordValid && (selectedRole != null) && isPrivacyAccepted
 
-    val fieldBg = Color(0xFFF3F4F6)
+    val fieldBg = palette.chipUnselected
     val scrollState = rememberScrollState()
 
     Box(
@@ -75,7 +79,7 @@ fun RegisterScreen(
                 text = "Регистрация",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E1E)
+                color = palette.textPrimary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -83,7 +87,7 @@ fun RegisterScreen(
             Text(
                 text = "Что бы зарегистрироваться в\nприложении, введите имя, email и\nпароль",
                 fontSize = 13.sp,
-                color = Color.Gray,
+                color = palette.textSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 18.sp
             )
@@ -93,12 +97,12 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = { Text("Имя", color = Color(0xFF9E9E9E), fontSize = 14.sp) },
+                placeholder = { Text("Имя", color = palette.textTertiary, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Person,
                         contentDescription = "Name Icon",
-                        tint = Color(0xFF1E1E1E),
+                        tint = palette.textPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -118,12 +122,12 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                placeholder = { Text("E-mail", color = Color(0xFF9E9E9E), fontSize = 14.sp) },
+                placeholder = { Text("E-mail", color = palette.textTertiary, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Email,
                         contentDescription = "Email Icon",
-                        tint = Color(0xFF1E1E1E),
+                        tint = palette.textPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -144,12 +148,12 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = { Text("Пароль", color = Color(0xFF9E9E9E), fontSize = 14.sp) },
+                placeholder = { Text("Пароль", color = palette.textTertiary, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Lock,
                         contentDescription = "Password Icon",
-                        tint = Color(0xFF1E1E1E),
+                        tint = palette.textPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -187,12 +191,12 @@ fun RegisterScreen(
                         Text(
                             text = selectedRole?.title ?: "Выберите роль...",
                             fontSize = 14.sp,
-                            color = if (selectedRole == null) Color(0xFF9E9E9E) else Color(0xFF1E1E1E)
+                            color = if (selectedRole == null) palette.textTertiary else palette.textPrimary
                         )
                         Icon(
                             imageVector = Icons.Outlined.KeyboardArrowDown,
                             contentDescription = "Expand Role",
-                            tint = Color.Gray
+                            tint = palette.textSecondary
                         )
                     }
                 }
@@ -230,12 +234,12 @@ fun RegisterScreen(
                 Checkbox(
                     checked = isPrivacyAccepted,
                     onCheckedChange = { isPrivacyAccepted = it },
-                    colors = CheckboxDefaults.colors(checkedColor = VoltixTeal)
+                    colors = CheckboxDefaults.colors(checkedColor = palette.teal)
                 )
                 Text(
                     text = "Я соглашаюсь с условиями политики\nконфиденциальности",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = palette.textSecondary,
                     lineHeight = 16.sp
                 )
             }
@@ -243,11 +247,11 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Уже есть аккаунт? ", fontSize = 13.sp, color = Color.Gray)
+                Text("Уже есть аккаунт? ", fontSize = 13.sp, color = palette.textSecondary)
                 Text(
                     text = "Войти",
                     fontSize = 13.sp,
-                    color = Color(0xFF1976D2),
+                    color = palette.blue,
                     modifier = Modifier.clickable { onNavigateToLogin() }
                 )
             }
@@ -269,18 +273,18 @@ fun RegisterScreen(
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = VoltixTeal,
-                    disabledContainerColor = VoltixTeal.copy(alpha = 0.45f)
+                    containerColor = palette.teal,
+                    disabledContainerColor = palette.teal.copy(alpha = 0.45f)
                 )
             ) {
-                Text("Продолжить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text("Продолжить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = onAccentWhite())
             }
         }
 
         Text(
             text = "Нажимая на кнопку \"Продолжить\" Вы\nсоглашаетесь на обработку персональных\nданных",
             fontSize = 11.sp,
-            color = Color.LightGray,
+            color = palette.divider,
             textAlign = TextAlign.Center,
             lineHeight = 15.sp,
             modifier = Modifier

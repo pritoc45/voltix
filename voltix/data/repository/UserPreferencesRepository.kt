@@ -16,6 +16,8 @@ class UserPreferencesRepository(private val context: Context) {
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
         val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_ROLE = stringPreferencesKey("user_role")
+        val USER_AVATAR_URI = stringPreferencesKey("user_avatar_uri")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     val isLoggedIn: Flow<Boolean> = context.userDataStore.data.map { preferences ->
@@ -30,11 +32,33 @@ class UserPreferencesRepository(private val context: Context) {
         preferences[PreferencesKeys.USER_ROLE] ?: "BUYER"
     }
 
+    // Выбранная тема приложения: SYSTEM / LIGHT / DARK — сохраняется между запусками
+    val themeMode: Flow<String> = context.userDataStore.data.map { preferences ->
+        preferences[PreferencesKeys.THEME_MODE] ?: "SYSTEM"
+    }
+
+    suspend fun saveThemeMode(mode: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
+
     suspend fun saveSession(email: String, role: String) {
         context.userDataStore.edit { preferences ->
             preferences[PreferencesKeys.IS_LOGGED_IN] = true
             preferences[PreferencesKeys.USER_EMAIL] = email
             preferences[PreferencesKeys.USER_ROLE] = role
+        }
+    }
+
+    // Пользователь может выбрать своё фото профиля из галереи — URI сохраняется между запусками
+    val userAvatarUri: Flow<String> = context.userDataStore.data.map { preferences ->
+        preferences[PreferencesKeys.USER_AVATAR_URI] ?: ""
+    }
+
+    suspend fun saveAvatarUri(uri: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferencesKeys.USER_AVATAR_URI] = uri
         }
     }
 

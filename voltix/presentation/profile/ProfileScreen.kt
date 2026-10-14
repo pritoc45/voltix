@@ -1,6 +1,11 @@
 package com.example.voltix.presentation.profile
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -13,10 +18,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
@@ -25,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,12 +41,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.voltix.data.repository.AppStateRepository
+import com.example.voltix.data.repository.OrderStage
 import com.example.voltix.data.repository.UserPreferencesRepository
 import com.example.voltix.presentation.home.formatPrice
-import com.example.voltix.ui.theme.VoltixBackground
-import com.example.voltix.ui.theme.VoltixOrange
+import com.example.voltix.ui.theme.ThemeMode
+import com.example.voltix.ui.theme.voltixPalette
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.voltix.ui.theme.onAccentWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,10 +60,15 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val palette = voltixPalette()
     val userPrefs = remember { UserPreferencesRepository(context) }
 
     val savedEmail by userPrefs.userEmail.collectAsState(initial = "")
     val savedRole by userPrefs.userRole.collectAsState(initial = "BUYER")
+
+    // Выбор темы: система / светлая / тёмная — сохраняется в DataStore
+    val savedThemeMode by userPrefs.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     var emailState by remember(savedEmail) {
         mutableStateOf(if (savedEmail.isNotBlank()) savedEmail else "alexandr@mail.ru")
@@ -67,9 +84,36 @@ fun ProfileScreen(
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showAddProductDialog by remember { mutableStateOf(false) }
 
+    // Своё фото профиля: URI из галереи сохраняется в DataStore и переживает перезапуск приложения
+    val savedAvatarUri by userPrefs.userAvatarUri.collectAsState(initial = "")
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            // Даём постоянный доступ к выбранному файлу после закрытия activity-пикера
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // Некоторые OEM-прошивки не дают persistable-разрешение — фото всё равно загрузится в текущей сессии
+            }
+            coroutineScope.launch { userPrefs.saveAvatarUri(uri.toString()) }
+        }
+    }
+
     val orders by AppStateRepository.orders.collectAsState()
     val userReviews by AppStateRepository.userReviews.collectAsState()
     val allProducts by AppStateRepository.products.collectAsState()
+
+    // Автотик стадий доставки: UI обновляется каждые 20 секунд, статусы меняются по времени
+    LaunchedEffect(orders.isNotEmpty()) {
+        while (true) {
+            delay(20_000L)
+            AppStateRepository.tickOrderStages()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,7 +124,7 @@ fun ProfileScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color(0xFF1E1E1E)
+                            tint = palette.textPrimary
                         )
                     }
                 },
@@ -90,25 +134,25 @@ fun ProfileScreen(
                             Icon(
                                 imageVector = Icons.Outlined.MoreVert,
                                 contentDescription = "Menu",
-                                tint = Color(0xFF1E1E1E)
+                                tint = palette.textPrimary
                             )
                         }
 
                         DropdownMenu(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false },
-                            modifier = Modifier.background(Color.White)
+                            modifier = Modifier.background(palette.card)
                         ) {
                             DropdownMenuItem(
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Outlined.Edit,
                                         contentDescription = "Edit",
-                                        tint = Color(0xFF1E1E1E),
+                                        tint = palette.textPrimary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 },
-                                text = { Text("Изменить", fontSize = 14.sp, color = Color(0xFF1E1E1E)) },
+                                text = { Text("Изменить", fontSize = 14.sp, color = palette.textPrimary) },
                                 onClick = {
                                     isMenuExpanded = false
                                     showEditProfileDialog = true
@@ -119,11 +163,11 @@ fun ProfileScreen(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.ExitToApp,
                                         contentDescription = "Logout",
-                                        tint = Color(0xFFE53935),
+                                        tint = palette.red,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 },
-                                text = { Text("Выйти", fontSize = 14.sp, color = Color(0xFFE53935)) },
+                                text = { Text("Выйти", fontSize = 14.sp, color = palette.red) },
                                 onClick = {
                                     isMenuExpanded = false
                                     coroutineScope.launch {
@@ -132,13 +176,28 @@ fun ProfileScreen(
                                     }
                                 }
                             )
+                            DropdownMenuItem(
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Palette,
+                                        contentDescription = "Theme",
+                                        tint = palette.textPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                text = { Text("Тема: ${themeModeLabel(savedThemeMode)}", fontSize = 14.sp, color = palette.textPrimary) },
+                                onClick = {
+                                    isMenuExpanded = false
+                                    showThemeDialog = true
+                                }
+                            )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = VoltixBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = palette.background)
             )
         },
-        containerColor = VoltixBackground
+        containerColor = palette.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -155,28 +214,80 @@ fun ProfileScreen(
                         .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE0E0E0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "Avatar",
-                            tint = Color(0xFF9E9E9E),
-                            modifier = Modifier.size(48.dp)
-                        )
+                    // Аватар: своё фото из галереи, нажми чтобы изменить (кнопка с камерой внизу справа)
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(CircleShape)
+                                .background(palette.divider)
+                                .border(3.dp, palette.orange.copy(alpha = 0.85f), CircleShape)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (savedAvatarUri.isNotBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(Uri.parse(savedAvatarUri))
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото профиля",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(86.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = "Avatar",
+                                    tint = palette.textSecondary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+
+                        // Кнопка-бейдж «изменить фото»
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(palette.orange)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddAPhoto,
+                                contentDescription = "Изменить фото",
+                                tint = onAccentWhite(),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (savedAvatarUri.isNotBlank()) "Нажмите на фото, чтобы изменить" else "Нажмите на аватар, чтобы загрузить своё фото",
+                        fontSize = 11.sp,
+                        color = palette.textSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = nameState,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E1E1E)
+                        color = palette.textPrimary
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -184,7 +295,7 @@ fun ProfileScreen(
                     Text(
                         text = "$emailState • $displayRole",
                         fontSize = 13.sp,
-                        color = Color(0xFF757575)
+                        color = palette.textSecondary
                     )
                 }
             }
@@ -201,15 +312,15 @@ fun ProfileScreen(
                             text = "Ваши товары",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1E1E1E)
+                            color = palette.textPrimary
                         )
                         Button(
                             onClick = { showAddProductDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                            colors = ButtonDefaults.buttonColors(containerColor = palette.blue),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Добавить товар", fontSize = 12.sp, color = Color.White)
+                            Text("Добавить товар", fontSize = 12.sp, color = onAccentWhite())
                         }
                     }
                 }
@@ -226,7 +337,7 @@ fun ProfileScreen(
                                     .padding(vertical = 4.dp)
                                     .clickable { onProductClick(product.id) },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = palette.card),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
@@ -237,7 +348,7 @@ fun ProfileScreen(
                                             .fillMaxWidth()
                                             .height(80.dp)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0xFF262121))
+                                            .background(palette.bottomBar)
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
@@ -245,14 +356,14 @@ fun ProfileScreen(
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
-                                        color = Color(0xFF1E1E1E)
+                                        color = palette.textPrimary
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = formatPrice(product.price),
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = VoltixOrange
+                                        color = palette.orange
                                     )
                                 }
                             }
@@ -276,7 +387,7 @@ fun ProfileScreen(
                                 text = "Заказы",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E1E1E)
+                                color = palette.textPrimary
                             )
                         }
 
@@ -284,22 +395,24 @@ fun ProfileScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White)
+                                colors = CardDefaults.cardColors(containerColor = palette.card)
                             ) {
                                 Text(
                                     text = "У вас пока нет оформленных заказов",
                                     fontSize = 13.sp,
-                                    color = Color.Gray,
+                                    color = palette.textSecondary,
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 orders.forEach { order ->
+                                    val stage = order.currentStage
+                                    val stageIndex = order.currentStage.ordinal
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(14.dp),
-                                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                                        colors = CardDefaults.cardColors(containerColor = palette.card),
                                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                                     ) {
                                         Column(modifier = Modifier.padding(14.dp)) {
@@ -312,23 +425,24 @@ fun ProfileScreen(
                                                     text = "Заказ ${order.id}",
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 14.sp,
-                                                    color = Color(0xFF1E1E1E)
+                                                    color = palette.textPrimary
                                                 )
                                                 Surface(
-                                                    color = when (order.status) {
-                                                        "Доставлен" -> Color(0xFFE8F5E9)
-                                                        "В пути" -> Color(0xFFE3F2FD)
-                                                        else -> Color(0xFFFFF3E0)
+                                                    color = when (stage) {
+                                                        OrderStage.DELIVERED -> palette.stageDeliveredBg
+                                                        OrderStage.ARRIVED -> palette.stageDeliveredBg
+                                                        OrderStage.IN_TRANSIT -> palette.stageTransitBg
+                                                        else -> palette.stageAssemblingBg
                                                     },
                                                     shape = RoundedCornerShape(6.dp)
                                                 ) {
                                                     Text(
-                                                        text = order.status,
+                                                        text = stage.title,
                                                         fontSize = 11.sp,
-                                                        color = when (order.status) {
-                                                            "Доставлен" -> Color(0xFF2E7D32)
-                                                            "В пути" -> Color(0xFF1976D2)
-                                                            else -> Color(0xFFEF6C00)
+                                                        color = when (stage) {
+                                                            OrderStage.DELIVERED, OrderStage.ARRIVED -> palette.green
+                                                            OrderStage.IN_TRANSIT -> palette.stageTransitFg
+                                                            else -> palette.stageAssemblingFg
                                                         },
                                                         fontWeight = FontWeight.Bold,
                                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -337,18 +451,41 @@ fun ProfileScreen(
                                             }
 
                                             Spacer(modifier = Modifier.height(4.dp))
+                                            if (stage == OrderStage.DELIVERED) {
+                                                Text(
+                                                    text = "Доставлен • ${order.date}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = palette.green
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "Ожидается: ${order.deliveryTime}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = palette.green
+                                                )
+                                            }
+
                                             Text(
-                                                text = "Ожидается: ${order.deliveryTime}",
+                                                text = "${order.items.sumOf { it.count }} шт. • ${formatPrice(order.totalPrice)}",
                                                 fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF2E7D32)
+                                                color = palette.textSecondary
                                             )
 
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = "${order.date} • ${order.items.sumOf { it.count }} шт. • ${formatPrice(order.totalPrice)}",
-                                                fontSize = 12.sp,
-                                                color = Color.Gray
+                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                            // Трекер стадий заказа: собирается -> в доставку -> в пути -> на месте -> доставлен
+                                            OrderStageTracker(
+                                                stages = listOf(
+                                                OrderStage.ASSEMBLING,
+                                                OrderStage.SENT_TO_DELIVERY,
+                                                OrderStage.IN_TRANSIT,
+                                                OrderStage.ARRIVED,
+                                                OrderStage.DELIVERED
+                                            ),
+                                                currentIndex = stageIndex,
+                                                stageTimestamp = { st -> order.stageTimestamp(st) }
                                             )
 
                                             Spacer(modifier = Modifier.height(10.dp))
@@ -365,7 +502,7 @@ fun ProfileScreen(
                                                         modifier = Modifier
                                                             .size(48.dp)
                                                             .clip(RoundedCornerShape(8.dp))
-                                                            .background(Color(0xFFF0F0F0))
+                                                            .background(palette.chipUnselected)
                                                             .clickable { onProductClick(item.product.id) }
                                                     )
                                                 }
@@ -391,7 +528,7 @@ fun ProfileScreen(
                                 text = "Ваши отзывы",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E1E1E)
+                                color = palette.textPrimary
                             )
                         }
 
@@ -399,12 +536,12 @@ fun ProfileScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White)
+                                colors = CardDefaults.cardColors(containerColor = palette.card)
                             ) {
                                 Text(
                                     text = "Отзывы появятся здесь после совершения покупок",
                                     fontSize = 13.sp,
-                                    color = Color.Gray,
+                                    color = palette.textSecondary,
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
@@ -420,7 +557,7 @@ fun ProfileScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -431,7 +568,7 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .size(65.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFFF0F0F0))
+                                        .background(palette.chipUnselected)
                                         .clickable { onProductClick(review.productId) }
                                 )
 
@@ -442,7 +579,7 @@ fun ProfileScreen(
                                         text = review.productTitle,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1E1E1E),
+                                        color = palette.textPrimary,
                                         maxLines = 1,
                                         modifier = Modifier.clickable { onProductClick(review.productId) }
                                     )
@@ -452,7 +589,7 @@ fun ProfileScreen(
                                         Text(
                                             text = review.text.ifBlank { "Без комментария" },
                                             fontSize = 12.sp,
-                                            color = Color(0xFF616161),
+                                            color = palette.textTertiary,
                                             lineHeight = 16.sp
                                         )
                                     }
@@ -465,7 +602,7 @@ fun ProfileScreen(
                                             Icon(
                                                 imageVector = Icons.Outlined.Star,
                                                 contentDescription = null,
-                                                tint = if (starIndex < currentRating) Color(0xFFFFC107) else Color(0xFFE0E0E0),
+                                                tint = if (starIndex < currentRating) palette.amber else palette.divider,
                                                 modifier = Modifier
                                                     .size(20.dp)
                                                     .clickable {
@@ -499,10 +636,10 @@ fun ProfileScreen(
                                         isEditing = false
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = palette.blue),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Оставить отзыв", fontSize = 13.sp, color = Color.White)
+                                    Text("Оставить отзыв", fontSize = 13.sp, color = onAccentWhite())
                                 }
                             }
                         }
@@ -523,7 +660,7 @@ fun ProfileScreen(
         Dialog(onDismissRequest = { showEditProfileDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = palette.card,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
@@ -539,7 +676,7 @@ fun ProfileScreen(
                                 .size(24.dp)
                                 .align(Alignment.TopEnd)
                         ) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Close", tint = Color.Gray)
+                            Icon(Icons.Outlined.Close, contentDescription = "Close", tint = palette.textSecondary)
                         }
 
                         Column(
@@ -550,13 +687,13 @@ fun ProfileScreen(
                                 text = "Изменение профиля",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E1E1E)
+                                color = palette.textPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Здесь вы можете изменить\nинформацию о себе",
                                 fontSize = 12.sp,
-                                color = Color.Gray,
+                                color = palette.textSecondary,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 16.sp
                             )
@@ -564,6 +701,72 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
+
+                    // Превью аватара прямо в диалоге + кнопка выбора своего фото из галереи
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            modifier = Modifier
+                                .size(76.dp)
+                                .clip(CircleShape)
+                                .background(palette.divider)
+                                .border(2.dp, palette.orange.copy(alpha = 0.85f), CircleShape)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (savedAvatarUri.isNotBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(Uri.parse(savedAvatarUri))
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото профиля",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    tint = palette.textSecondary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(palette.orange)
+                                .clickable {
+                                    galleryPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddAPhoto,
+                                contentDescription = "Выбрать фото",
+                                tint = onAccentWhite(),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Нажмите на фото, чтобы выбрать своё изображение из галереи",
+                        fontSize = 11.sp,
+                        color = palette.textSecondary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
                         value = tempEmail,
@@ -573,7 +776,7 @@ fun ProfileScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Email,
                                 contentDescription = null,
-                                tint = Color(0xFF1E1E1E),
+                                tint = palette.textPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -581,8 +784,8 @@ fun ProfileScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFF3F4F6),
-                            unfocusedContainerColor = Color(0xFFF3F4F6),
+                            focusedContainerColor = palette.fieldBackground,
+                            unfocusedContainerColor = palette.fieldBackground,
                             focusedBorderColor = Color.Transparent,
                             unfocusedBorderColor = Color.Transparent
                         ),
@@ -599,7 +802,7 @@ fun ProfileScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Person,
                                 contentDescription = null,
-                                tint = Color(0xFF1E1E1E),
+                                tint = palette.textPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -607,8 +810,8 @@ fun ProfileScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFF3F4F6),
-                            unfocusedContainerColor = Color(0xFFF3F4F6),
+                            focusedContainerColor = palette.fieldBackground,
+                            unfocusedContainerColor = palette.fieldBackground,
                             focusedBorderColor = Color.Transparent,
                             unfocusedBorderColor = Color.Transparent
                         )
@@ -629,24 +832,83 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.blue)
                     ) {
-                        Text("Сохранить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text("Сохранить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = onAccentWhite())
                     }
                 }
             }
         }
     }
 
+    // Диалог выбора темы приложения — выбор сохраняется между запусками
+    if (showThemeDialog) {
+        val themeOptions = listOf(
+            ThemeMode.SYSTEM to "Как в системе",
+            ThemeMode.LIGHT to "Светлая",
+            ThemeMode.DARK to "Тёмная"
+        )
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Выбор темы", color = palette.textPrimary) },
+            text = {
+                Column {
+                    themeOptions.forEach { (mode, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (savedThemeMode == mode) palette.teal.copy(alpha = 0.12f)
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    coroutineScope.launch { userPrefs.saveThemeMode(mode) }
+                                    showThemeDialog = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = savedThemeMode == mode,
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = palette.teal,
+                                    unselectedColor = palette.textSecondary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = label,
+                                fontSize = 15.sp,
+                                color = palette.textPrimary,
+                                fontWeight = if (savedThemeMode == mode) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            containerColor = palette.card,
+            titleContentColor = palette.textPrimary,
+            textContentColor = palette.textPrimary
+        )
+    }
+
     if (showAddProductDialog) {
         var title by remember { mutableStateOf("") }
         var price by remember { mutableStateOf("") }
         var category by remember { mutableStateOf("") }
+        // Фото товара: продавец может загрузить своё изображение из галереи
+        var productPhotoUri by remember { mutableStateOf<Uri?>(null) }
+        val productPhotoPicker = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { uri: Uri? -> if (uri != null) productPhotoUri = uri }
 
         Dialog(onDismissRequest = { showAddProductDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = palette.card,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
@@ -662,7 +924,7 @@ fun ProfileScreen(
                                 .size(24.dp)
                                 .align(Alignment.TopEnd)
                         ) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Close", tint = Color.Gray)
+                            Icon(Icons.Outlined.Close, contentDescription = "Close", tint = palette.textSecondary)
                         }
                         Text(
                             text = "Добавить товар",
@@ -673,6 +935,57 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(18.dp))
+
+                    // Загрузка своего фото товара (по умолчанию — стоковое изображение категории)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(110.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(palette.fieldBackground)
+                            .border(1.5.dp, palette.outline, RoundedCornerShape(12.dp))
+                            .clickable {
+                                productPhotoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (productPhotoUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(productPhotoUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Фото товара",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Text(
+                                text = "Изменить фото",
+                                fontSize = 11.sp,
+                                color = onAccentWhite(),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp)
+                                    .background(palette.scrim.copy(alpha = 0.55f), CircleShape)
+                                    .padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AddAPhoto,
+                                    contentDescription = null,
+                                    tint = palette.textSecondary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("Загрузить фото товара", fontSize = 12.sp, color = palette.textSecondary)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     OutlinedTextField(
                         value = title,
@@ -714,6 +1027,13 @@ fun ProfileScreen(
                                     price = priceVal,
                                     category = if (category.isNotBlank()) category else "Женская одежда"
                                 )
+                                // Если продавец загрузил своё фото — подменяем им стоковое изображение категории
+                                if (productPhotoUri != null) {
+                                    val newest = AppStateRepository.products.value.firstOrNull()
+                                    if (newest != null) {
+                                        AppStateRepository.updateProductImage(newest.id, productPhotoUri.toString())
+                                    }
+                                }
                                 showAddProductDialog = false
                             }
                         },
@@ -721,9 +1041,120 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.blue)
                     ) {
-                        Text("Опубликовать", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Опубликовать", color = onAccentWhite(), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Вертикальный трекер стадий доставки заказа (как в Ozon/WB)
+private fun themeModeLabel(mode: String): String = when (mode) {
+    ThemeMode.LIGHT -> "Светлая"
+    ThemeMode.DARK -> "Тёмная"
+    else -> "Как в системе"
+}
+
+@Composable
+private fun OrderStageTracker(
+    stages: List<OrderStage>,
+    currentIndex: Int,
+    stageTimestamp: (OrderStage) -> String
+) {
+    val palette = voltixPalette()
+    val doneColor = MaterialTheme.colorScheme.primary
+    val activeColor = palette.orange
+    val pendingColor = palette.divider
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        stages.forEachIndexed { index, stage ->
+            val isDone = index < currentIndex
+            val isActive = index == currentIndex
+            val dotColor = when {
+                isDone -> doneColor
+                isActive -> activeColor
+                else -> pendingColor
+            }
+            val lineColor = if (index < currentIndex) doneColor else palette.divider
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Колонка с точками и линией
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(dotColor)
+                    ) {
+                        if (isDone) {
+                            Text(text = "✓", color = onAccentWhite(), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        } else if (isActive) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(onAccentWhite())
+                            )
+                        }
+                    }
+                    if (index != stages.lastIndex) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(34.dp)
+                                .background(lineColor)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.padding(bottom = if (index == stages.lastIndex) 0.dp else 10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stage.title,
+                            fontSize = 13.sp,
+                            fontWeight = if (isActive || isDone) FontWeight.Bold else FontWeight.Normal,
+                            color = when {
+                                isActive -> palette.textPrimary
+                                isDone -> doneColor
+                                else -> palette.textSecondary
+                            }
+                        )
+                        if (isActive && stage != stages.last()) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = palette.stageAssemblingBg,
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "сейчас",
+                                    fontSize = 9.sp,
+                                    color = activeColor,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (isActive) {
+                        Text(
+                            text = stage.description,
+                            fontSize = 11.sp,
+                            color = palette.textSecondary,
+                            lineHeight = 14.sp
+                        )
+                    }
+                    if (isDone || isActive) {
+                        Text(
+                            text = stageTimestamp(stage),
+                            fontSize = 10.sp,
+                            color = palette.divider
+                        )
                     }
                 }
             }

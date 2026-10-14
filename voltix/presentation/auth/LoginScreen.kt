@@ -26,11 +26,15 @@ import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixTeal
 import kotlinx.coroutines.launch
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val userPrefs = remember { UserPreferencesRepository(context) }
@@ -42,7 +46,7 @@ fun LoginScreen(
     val isPasswordValid = ValidationUtils.isValidPassword(password)
     val isFormValid = isEmailValid && isPasswordValid
 
-    val fieldBg = Color(0xFFF3F4F6)
+    val fieldBg = palette.chipUnselected
 
     Box(
         modifier = Modifier
@@ -60,7 +64,7 @@ fun LoginScreen(
                 text = "Вход",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E1E)
+                color = palette.textPrimary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -68,7 +72,7 @@ fun LoginScreen(
             Text(
                 text = "Что бы войти в аккаунт приложения,\nвведите email и пароль",
                 fontSize = 13.sp,
-                color = Color.Gray,
+                color = palette.textSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 18.sp
             )
@@ -78,12 +82,12 @@ fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                placeholder = { Text("E-mail", color = Color(0xFF9E9E9E), fontSize = 14.sp) },
+                placeholder = { Text("E-mail", color = palette.textTertiary, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Email,
                         contentDescription = "Email Icon",
-                        tint = Color(0xFF1E1E1E),
+                        tint = palette.textPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -104,12 +108,12 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = { Text("Пароль", color = Color(0xFF9E9E9E), fontSize = 14.sp) },
+                placeholder = { Text("Пароль", color = palette.textTertiary, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Lock,
                         contentDescription = "Password Icon",
-                        tint = Color(0xFF1E1E1E),
+                        tint = palette.textPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -129,11 +133,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Нет аккаунта? ", fontSize = 13.sp, color = Color.Gray)
+                Text("Нет аккаунта? ", fontSize = 13.sp, color = palette.textSecondary)
                 Text(
                     text = "Зарегистрироваться",
                     fontSize = 13.sp,
-                    color = Color(0xFF1976D2),
+                    color = palette.blue,
                     modifier = Modifier.clickable { onNavigateToRegister() }
                 )
             }
@@ -155,18 +159,18 @@ fun LoginScreen(
                 enabled = isFormValid,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = VoltixTeal,
-                    disabledContainerColor = VoltixTeal.copy(alpha = 0.45f)
+                    containerColor = palette.teal,
+                    disabledContainerColor = palette.teal.copy(alpha = 0.45f)
                 )
             ) {
-                Text("Продолжить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text("Продолжить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = onAccentWhite())
             }
         }
 
         Text(
             text = "Нажимая на кнопку \"Продолжить\" Вы\nсоглашаетесь на обработку персональных\nданных",
             fontSize = 11.sp,
-            color = Color.LightGray,
+            color = palette.divider,
             textAlign = TextAlign.Center,
             lineHeight = 15.sp,
             modifier = Modifier

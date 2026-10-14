@@ -37,6 +37,8 @@ import com.example.voltix.ui.theme.VoltixOrange
 import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixTeal
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -46,6 +48,8 @@ fun HomeScreen(
     onToggleFavorite: (Product) -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val uiState by viewModel.uiState.collectAsState()
     val favoriteList by AppStateRepository.favoriteItems.collectAsState()
 
@@ -101,7 +105,7 @@ fun HomeScreen(
                             text = "Voltix",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = VoltixTeal
+                            color = palette.teal
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -119,7 +123,7 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = Icons.Default.Search,
                                         contentDescription = "Search",
-                                        tint = Color.Gray,
+                                        tint = palette.textSecondary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 },
@@ -127,8 +131,8 @@ fun HomeScreen(
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
+                                    focusedContainerColor = palette.card,
+                                    unfocusedContainerColor = palette.card,
                                     focusedBorderColor = Color.Transparent,
                                     unfocusedBorderColor = Color.Transparent
                                 )
@@ -140,7 +144,7 @@ fun HomeScreen(
                             FilledIconButton(
                                 onClick = { showFilterDialog = true },
                                 colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = if (selectedBrand != "Все" || selectedSpecTag != "Все" || sortByPriceAsc != null) VoltixOrange else Color.White
+                                    containerColor = if (selectedBrand != "Все" || selectedSpecTag != "Все" || sortByPriceAsc != null) palette.orange else palette.card
                                 ),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.size(52.dp)
@@ -148,7 +152,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Tune,
                                     contentDescription = "Filter",
-                                    tint = if (selectedBrand != "Все" || selectedSpecTag != "Все" || sortByPriceAsc != null) Color.White else Color(0xFF1E1E1E)
+                                    tint = if (selectedBrand != "Все" || selectedSpecTag != "Все" || sortByPriceAsc != null) palette.card else palette.textPrimary
                                 )
                             }
                         }
@@ -165,8 +169,8 @@ fun HomeScreen(
                                     onClick = { selectedCategory = category },
                                     label = { Text(category, fontSize = 12.sp) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = VoltixTeal,
-                                        selectedLabelColor = Color.White
+                                        selectedContainerColor = palette.teal,
+                                        selectedLabelColor = onAccentWhite()
                                     )
                                 )
                             }
@@ -200,7 +204,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .clickable { onProductClick(product.id) },
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = palette.card),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -212,13 +216,13 @@ fun HomeScreen(
                                     .fillMaxWidth()
                                     .height(110.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF262121))
+                                    .background(palette.textPrimary)
                             )
 
                             // Бейдж скидки
                             if (product.discountPercent > 0) {
                                 Surface(
-                                    color = VoltixOrange,
+                                    color = palette.orange,
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier
                                         .align(Alignment.TopStart)
@@ -228,7 +232,7 @@ fun HomeScreen(
                                         text = "-${product.discountPercent}%",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = onAccentWhite(),
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -243,7 +247,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = if (isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                     contentDescription = "Favorite",
-                                    tint = if (isFav) VoltixOrange else Color.White
+                                    tint = if (isFav) palette.orange onAccentWhite().card
                                 )
                             }
 
@@ -253,14 +257,14 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .matchParentSize()
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(Color.Black.copy(alpha = 0.45f)),
+                                        .background(palette.scrim.copy(alpha = 0.45f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = "Нет в наличии",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = onAccentWhite()
                                     )
                                 }
                             }
@@ -272,7 +276,7 @@ fun HomeScreen(
                             text = product.title,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1E1E1E),
+                            color = palette.textPrimary,
                             maxLines = 1
                         )
 
@@ -283,7 +287,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = "Rating",
-                                    tint = Color(0xFFFFC107),
+                                    tint = palette.amber,
                                     modifier = Modifier.size(13.dp)
                                 )
                                 Spacer(modifier = Modifier.width(3.dp))
@@ -291,13 +295,13 @@ fun HomeScreen(
                                     text = "%.1f".format(product.rating),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF616161)
+                                    color = palette.textSecondary
                                 )
                                 if (product.reviewsCount > 0) {
                                     Text(
                                         text = " (${product.reviewsCount})",
                                         fontSize = 12.sp,
-                                        color = Color.LightGray
+                                        color = palette.divider
                                     )
                                 }
                             }
@@ -311,14 +315,14 @@ fun HomeScreen(
                                 text = formatPrice(product.price),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = VoltixOrange
+                                color = palette.orange
                             )
                             if (product.oldPrice != null) {
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = formatPrice(product.oldPrice!!),
                                     fontSize = 12.sp,
-                                    color = Color.LightGray,
+                                    color = palette.divider,
                                     textDecoration = TextDecoration.LineThrough
                                 )
                             }
@@ -334,9 +338,9 @@ fun HomeScreen(
                             },
                             fontSize = 11.sp,
                             color = when {
-                                !product.isAvailable -> Color(0xFFE53935)
-                                product.stockCount <= 3 -> VoltixOrange
-                                else -> Color(0xFF2E7D32)
+                                !product.isAvailable -> palette.red
+                                product.stockCount <= 3 -> palette.orange
+                                else -> palette.green
                             }
                         )
 
@@ -350,16 +354,16 @@ fun HomeScreen(
                                 .height(36.dp),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = VoltixTeal,
-                                disabledContainerColor = Color(0xFFE0E0E0),
-                                disabledContentColor = Color.Gray
+                                containerColor = palette.teal,
+                                disabledContainerColor = palette.divider,
+                                disabledContentColor = palette.textSecondary
                             ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
                             Text(
                                 text = if (!product.isAvailable) "Нет в наличии" else "В корзину",
                                 fontSize = 12.sp,
-                                color = if (product.isAvailable) Color.White else Color.Gray
+                                color = if (product.isAvailable) palette.card else palette.textSecondary
                             )
                         }
                     }
@@ -373,7 +377,7 @@ fun HomeScreen(
         Dialog(onDismissRequest = { showFilterDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color.White,
+                color = onAccentWhite(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
@@ -390,16 +394,16 @@ fun HomeScreen(
                             text = "Фильтры",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1E1E1E)
+                            color = palette.textPrimary
                         )
                         IconButton(onClick = { showFilterDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = palette.textSecondary)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("Бренд", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E1E1E))
+                    Text("Бренд", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = palette.textPrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(brands) { brand ->
@@ -413,7 +417,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("Характеристики", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E1E1E))
+                    Text("Характеристики", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = palette.textPrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(specTags) { tag ->
@@ -427,7 +431,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("Цена", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E1E1E))
+                    Text("Цена", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = palette.textPrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
@@ -444,7 +448,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("Дополнительно", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E1E1E))
+                    Text("Дополнительно", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = palette.textPrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
@@ -452,8 +456,8 @@ fun HomeScreen(
                             onClick = { onlyDiscounted = !onlyDiscounted },
                             label = { Text("Только со скидкой", fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = VoltixOrange,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = palette.orange,
+                                selectedLabelColor = onAccentWhite()
                             )
                         )
                     }
@@ -485,16 +489,16 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Сбросить", color = Color.Gray, fontSize = 13.sp)
+                            Text("Сбросить", color = palette.textSecondary, fontSize = 13.sp)
                         }
 
                         Button(
                             onClick = { showFilterDialog = false },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = VoltixTeal)
+                            colors = ButtonDefaults.buttonColors(containerColor = palette.teal)
                         ) {
-                            Text("Применить", color = Color.White, fontSize = 13.sp)
+                            Text("Применить", color = onAccentWhite(), fontSize = 13.sp)
                         }
                     }
                 }

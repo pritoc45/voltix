@@ -1,7 +1,10 @@
 package com.example.voltix.presentation.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,17 +34,20 @@ import com.example.voltix.ui.theme.VoltixTeal
 import java.text.NumberFormat
 import java.util.Locale
 
+import com.example.voltix.ui.theme.voltixPalette
+import com.example.voltix.ui.theme.onAccentWhite()
 fun formatPrice(value: Double): String =
     NumberFormat.getNumberInstance(Locale("ru")).apply { maximumFractionDigits = 0 }.format(value) + " ₽"
 
 @Composable
 fun StarRatingRow(rating: Double, size: Int = 14) {
+    val palette = voltixPalette()
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         for (i in 1..5) {
             Icon(
                 imageVector = if (rating + 0.5 >= i) Icons.Filled.Star else Icons.Outlined.Star,
                 contentDescription = null,
-                tint = if (rating + 0.5 >= i) Color(0xFFFFC107) else Color(0xFFBDBDBD),
+                tint = if (rating + 0.5 >= i) palette.amber else palette.textTertiary,
                 modifier = Modifier.size(size.dp)
             )
         }
@@ -54,14 +60,20 @@ fun ProductDetailScreen(
     product: Product,
     onBackClick: () -> Unit,
     onAddToCart: (Product) -> Unit,
-    onToggleFavorite: (Product) -> Unit
+    onToggleFavorite: (Product) -> Unit,
+    onProductClick: (String) -> Unit = {}
 ) {
+    val palette = voltixPalette()
+    val palette = voltixPalette()
     val favoriteList by AppStateRepository.favoriteItems.collectAsState()
     val isFav = favoriteList.any { it.id == product.id }
 
     var selectedSize by remember(product.id) { mutableStateOf<String?>(null) }
     var selectedColor by remember(product.id) { mutableStateOf<String?>(null) }
     val reviews = remember(product.id) { AppStateRepository.getProductReviews(product.id) }
+    // Рекомендации: «Подходит к этому» и «Похожие товары»
+    val matchingProducts = remember(product.id) { AppStateRepository.getMatchingProducts(product) }
+    val similarProducts = remember(product.id) { AppStateRepository.getSimilarProducts(product) }
 
     Scaffold(
         topBar = {
@@ -77,7 +89,7 @@ fun ProductDetailScreen(
                         Icon(
                             imageVector = if (isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (isFav) VoltixOrange else Color.Gray
+                            tint = if (isFav) palette.orange else palette.textSecondary
                         )
                     }
                 },
@@ -86,7 +98,7 @@ fun ProductDetailScreen(
         },
         bottomBar = {
             Surface(
-                color = Color.White,
+                color = onAccentWhite(),
                 shadowElevation = 8.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -98,20 +110,20 @@ fun ProductDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Цена", fontSize = 12.sp, color = Color.Gray)
+                        Text("Цена", fontSize = 12.sp, color = palette.textSecondary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = formatPrice(product.price),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = VoltixOrange
+                                color = palette.orange
                             )
                             if (product.oldPrice != null) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = formatPrice(product.oldPrice!!),
                                     fontSize = 14.sp,
-                                    color = Color.LightGray,
+                                    color = palette.divider,
                                     textDecoration = TextDecoration.LineThrough
                                 )
                             }
@@ -121,9 +133,9 @@ fun ProductDetailScreen(
                         onClick = { onAddToCart(product) },
                         enabled = product.isAvailable && AppStateRepository.canAddToCart(product),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = VoltixTeal,
-                            disabledContainerColor = Color(0xFFE0E0E0),
-                            disabledContentColor = Color.Gray
+                            containerColor = palette.teal,
+                            disabledContainerColor = palette.divider,
+                            disabledContentColor = palette.textSecondary
                         ),
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
@@ -135,7 +147,7 @@ fun ProductDetailScreen(
                                 else -> "В корзину"
                             },
                             fontSize = 15.sp,
-                            color = if (product.isAvailable) Color.White else Color.Gray,
+                            color = if (product.isAvailable) palette.card else palette.textSecondary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -159,11 +171,11 @@ fun ProductDetailScreen(
                         .fillMaxWidth()
                         .height(240.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
+                        .background(palette.card)
                 )
                 if (product.discountPercent > 0) {
                     Surface(
-                        color = VoltixOrange,
+                        color = palette.orange,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -173,7 +185,7 @@ fun ProductDetailScreen(
                             text = "-${product.discountPercent}%",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = onAccentWhite(),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
@@ -186,7 +198,7 @@ fun ProductDetailScreen(
                 text = product.title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E1E)
+                color = palette.textPrimary
             )
 
             // Рейтинг и отзывы
@@ -197,7 +209,7 @@ fun ProductDetailScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("%.1f".format(product.rating), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("${product.reviewsCount} отзывов", fontSize = 13.sp, color = Color.Gray)
+                    Text("${product.reviewsCount} отзывов", fontSize = 13.sp, color = palette.textSecondary)
                 }
             }
 
@@ -212,9 +224,9 @@ fun ProductDetailScreen(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = when {
-                    !product.isAvailable -> Color(0xFFE53935)
-                    product.stockCount <= 3 -> VoltixOrange
-                    else -> Color(0xFF2E7D32)
+                    !product.isAvailable -> palette.red
+                    product.stockCount <= 3 -> palette.orange
+                    else -> palette.green
                 }
             )
 
@@ -223,7 +235,7 @@ fun ProductDetailScreen(
             Text(
                 text = product.description,
                 fontSize = 14.sp,
-                color = Color(0xFF616161),
+                color = palette.textSecondary,
                 lineHeight = 20.sp
             )
 
@@ -234,7 +246,7 @@ fun ProductDetailScreen(
                     text = "Размер",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E1E1E)
+                    color = palette.textPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -248,8 +260,8 @@ fun ProductDetailScreen(
                             onClick = { selectedSize = size },
                             label = { Text(size, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = VoltixTeal,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = palette.teal,
+                                selectedLabelColor = onAccentWhite()
                             )
                         )
                     }
@@ -263,7 +275,7 @@ fun ProductDetailScreen(
                     text = "Цвет",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E1E1E)
+                    color = palette.textPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -277,8 +289,8 @@ fun ProductDetailScreen(
                             onClick = { selectedColor = colorName },
                             label = { Text(colorName, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = VoltixOrange,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = palette.orange,
+                                selectedLabelColor = onAccentWhite()
                             )
                         )
                     }
@@ -291,7 +303,7 @@ fun ProductDetailScreen(
                 text = "Характеристики",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E1E)
+                color = palette.textPrimary
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -299,7 +311,7 @@ fun ProductDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = palette.card)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     product.specs.forEach { (name, value) ->
@@ -309,15 +321,15 @@ fun ProductDetailScreen(
                                 .padding(vertical = 5.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(text = name, fontSize = 13.sp, color = Color.Gray)
+                            Text(text = name, fontSize = 13.sp, color = palette.textSecondary)
                             Text(
                                 text = value,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF1E1E1E)
+                                color = palette.textPrimary
                             )
                         }
-                        HorizontalDivider(color = Color(0xFFF5F5F5))
+                        HorizontalDivider(color = palette.divider)
                     }
                 }
             }
@@ -328,7 +340,7 @@ fun ProductDetailScreen(
                 text = "Отзывы (${reviews.size})",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E1E)
+                color = palette.textPrimary
             )
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -336,7 +348,7 @@ fun ProductDetailScreen(
                 Text(
                     text = "Пока нет отзывов. Купите товар и оставьте первый!",
                     fontSize = 13.sp,
-                    color = Color.Gray
+                    color = palette.textSecondary
                 )
             } else {
                 reviews.forEach { review ->
@@ -345,21 +357,21 @@ fun ProductDetailScreen(
                             .fillMaxWidth()
                             .padding(bottom = 10.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = palette.card)
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
                                     modifier = Modifier.size(34.dp),
                                     shape = CircleShape,
-                                    color = Color(0xFFE9F1F2)
+                                    color = palette.tealSoft
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
                                             text = review.author.take(1),
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = VoltixTeal
+                                            color = palette.teal
                                         )
                                     }
                                 }
@@ -369,9 +381,9 @@ fun ProductDetailScreen(
                                         text = review.author,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1E1E1E)
+                                        color = palette.textPrimary
                                     )
-                                    Text(review.date, fontSize = 11.sp, color = Color.Gray)
+                                    Text(review.date, fontSize = 11.sp, color = palette.textSecondary)
                                 }
                                 StarRatingRow(rating = review.rating.toDouble(), size = 13)
                             }
@@ -379,7 +391,7 @@ fun ProductDetailScreen(
                             Text(
                                 text = review.text,
                                 fontSize = 13.sp,
-                                color = Color(0xFF424242),
+                                color = palette.textSecondary,
                                 lineHeight = 18.sp
                             )
                         }
@@ -387,7 +399,189 @@ fun ProductDetailScreen(
                 }
             }
 
+            // ─── Подходит к этому (рекомендации стилиста) ───
+            if (matchingProducts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Подходит к «${product.title}»",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = palette.textPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Стилистически сочетающиеся товары, чтобы собрать полный образ",
+                    fontSize = 12.sp,
+                    color = palette.textSecondary
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalRecommendationRow(
+                    products = matchingProducts,
+                    onProductClick = onProductClick,
+                    onAddToCart = onAddToCart
+                )
+            }
+
+            // ─── Похожие товары ───
+            if (similarProducts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Похожие товары",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = palette.textPrimary
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalRecommendationRow(
+                    products = similarProducts,
+                    onProductClick = onProductClick,
+                    onAddToCart = onAddToCart
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun HorizontalRecommendationRow(
+    products: List<Product>,
+    onProductClick: (String) -> Unit,
+    onAddToCart: (Product) -> Unit
+) {
+    val palette = voltixPalette()
+    val favoriteList by AppStateRepository.favoriteItems.collectAsState()
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        items(products, key = { it.id }) { rec ->
+            val isFav = favoriteList.any { it.id == rec.id }
+            Card(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable { onProductClick(rec.id) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = palette.card),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        AsyncImage(
+                            model = rec.imageUrl,
+                            contentDescription = rec.title,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(VoltixBackground)
+                        )
+                        if (rec.discountPercent > 0) {
+                            Surface(
+                                color = palette.orange,
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(4.dp)
+                            ) {
+                                Text(
+                                    text = "-${rec.discountPercent}%",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = onAccentWhite(),
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = { AppStateRepository.toggleFavorite(rec) },
+                            modifier = Modifier
+                                .size(28.dp)
+                                .align(Alignment.TopEnd)
+                        ) {
+                            Icon(
+                                imageVector = if (isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (isFav) palette.orange else palette.textSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = rec.title,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = palette.textPrimary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = rec.category,
+                        fontSize = 10.sp,
+                        color = palette.textSecondary,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = formatPrice(rec.price),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = palette.teal
+                        )
+                        if (rec.oldPrice != null) {
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = formatPrice(rec.oldPrice),
+                                fontSize = 10.sp,
+                                color = palette.divider,
+                                textDecoration = TextDecoration.LineThrough
+                            )
+                        }
+                    }
+                    if (rec.rating > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = palette.amber,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "%.1f".format(rec.rating),
+                                fontSize = 11.sp,
+                                color = palette.textSecondary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Button(
+                        onClick = { onAddToCart(rec) },
+                        enabled = rec.isAvailable && AppStateRepository.canAddToCart(rec),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.teal,
+                            disabledContainerColor = palette.divider,
+                            disabledContentColor = palette.textSecondary
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().height(32.dp)
+                    ) {
+                        Text(
+                            text = if (rec.isAvailable) "В корзину" else "Нет",
+                            fontSize = 11.sp,
+                            color = if (rec.isAvailable) palette.card else palette.textSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }
