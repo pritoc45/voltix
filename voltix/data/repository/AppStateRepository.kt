@@ -6,6 +6,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.Calendar
+import java.util.Date
+
+enum class OrderStage(val title: String, val description: String) {
+    ASSEMBLING("Заказ собирается", "Собираем и упаковываем ваши товары на складе"),
+    SENT_TO_DELIVERY("Отправляется в доставку", "Коробка передана в службу доставки"),
+    IN_TRANSIT("В пути", "Заказ едет к вам в пункт выдачи или курьером"),
+    ARRIVED("На месте", "Заказ прибыл — можно забирать!"),
+    DELIVERED("Доставлен", "Заказ получен, приятных покупок!")
+}
 
 data class Order(
     val id: String,
@@ -13,8 +23,48 @@ data class Order(
     val deliveryTime: String,
     val items: List<CartItem>,
     val totalPrice: Double,
-    val status: String
-)
+    val status: String,
+    val createdAtMillis: Long = System.currentTimeMillis()
+) {
+    // Статус заказа вычисляется автоматически по времени с момента оплаты.
+    // Для демо стадии сменяются быстро: собран -> отправлен -> в пути -> на месте -> доставлен.
+    val currentStage: OrderStage
+        get() = when {
+            status == OrderStage.DELIVERED.title -> OrderStage.DELIVERED
+            else -> {
+                val minutes = (System.currentTimeMillis() - createdAtMillis) / 60_000L
+                when {
+                    minutes < 1L -> OrderStage.ASSEMBLING
+                    minutes < 3L -> OrderStage.SENT_TO_DELIVERY
+                    minutes < 6L -> OrderStage.IN_TRANSIT
+                    minutes < 10L -> OrderStage.ARRIVED
+                    else -> OrderStage.DELIVERED
+                }
+            }
+        }
+
+    fun stageTimestamp(stage: OrderStage): String {
+        val offsetMinutes = when (stage) {
+            OrderStage.ASSEMBLING -> 0L
+            OrderStage.SENT_TO_DELIVERY -> 1L
+            OrderStage.IN_TRANSIT -> 3L
+            OrderStage.ARRIVED -> 6L
+            OrderStage.DELIVERED -> 10L
+        }
+        val cal = Calendar.getInstance().apply { time = Date(createdAtMillis + offsetMinutes * 60_000L) }
+        return String.format("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+    }
+
+    companion object {
+        val STAGES = listOf(
+            OrderStage.ASSEMBLING,
+            OrderStage.SENT_TO_DELIVERY,
+            OrderStage.IN_TRANSIT,
+            OrderStage.ARRIVED,
+            OrderStage.DELIVERED
+        )
+    }
+}
 
 data class ReviewData(
     val id: String,
@@ -513,14 +563,20 @@ object AppStateRepository {
         return _favoriteItems.value.any { it.id == productId }
     }
 
-    fun createOrder(orderId: String, date: String, deliveryTime: String, items: List<CartItem>, total: Double, status: String = "В пути") {
+    // Обновляет список заказов, чтобы Compose пересобрал UI при смене стадии (происходит автоматически по таймеру)
+    fun tickOrderStages() {
+        _orders.update { list -> list.map { it.copy() } }
+    }
+
+    fun createOrder(orderId: String, date: String, deliveryTime: String, items: List<CartItem>, total: Double, status: String = OrderStage.ASSEMBLING.title) {
         val newOrder = Order(
             id = orderId,
             date = date,
             deliveryTime = deliveryTime,
             items = items,
             totalPrice = total,
-            status = status
+            status = status,
+            createdAtMillis = System.currentTimeMillis()
         )
         _orders.update { listOf(newOrder) + it }
 

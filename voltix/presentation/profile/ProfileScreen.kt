@@ -34,10 +34,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.voltix.data.repository.AppStateRepository
+import com.example.voltix.data.repository.OrderStage
 import com.example.voltix.data.repository.UserPreferencesRepository
 import com.example.voltix.presentation.home.formatPrice
 import com.example.voltix.ui.theme.VoltixBackground
 import com.example.voltix.ui.theme.VoltixOrange
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +72,14 @@ fun ProfileScreen(
     val orders by AppStateRepository.orders.collectAsState()
     val userReviews by AppStateRepository.userReviews.collectAsState()
     val allProducts by AppStateRepository.products.collectAsState()
+
+    // Автотик стадий доставки: UI обновляется каждые 20 секунд, статусы меняются по времени
+    LaunchedEffect(orders.isNotEmpty()) {
+        while (true) {
+            delay(20_000L)
+            AppStateRepository.tickOrderStages()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -296,6 +306,8 @@ fun ProfileScreen(
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 orders.forEach { order ->
+                                    val stage = order.currentStage
+                                    val stageIndex = order.currentStage.ordinal
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(14.dp),
@@ -315,19 +327,20 @@ fun ProfileScreen(
                                                     color = Color(0xFF1E1E1E)
                                                 )
                                                 Surface(
-                                                    color = when (order.status) {
-                                                        "Доставлен" -> Color(0xFFE8F5E9)
-                                                        "В пути" -> Color(0xFFE3F2FD)
+                                                    color = when (stage) {
+                                                        OrderStage.DELIVERED -> Color(0xFFE8F5E9)
+                                                        OrderStage.ARRIVED -> Color(0xFFE8F5E9)
+                                                        OrderStage.IN_TRANSIT -> Color(0xFFE3F2FD)
                                                         else -> Color(0xFFFFF3E0)
                                                     },
                                                     shape = RoundedCornerShape(6.dp)
                                                 ) {
                                                     Text(
-                                                        text = order.status,
+                                                        text = stage.title,
                                                         fontSize = 11.sp,
-                                                        color = when (order.status) {
-                                                            "Доставлен" -> Color(0xFF2E7D32)
-                                                            "В пути" -> Color(0xFF1976D2)
+                                                        color = when (stage) {
+                                                            OrderStage.DELIVERED, OrderStage.ARRIVED -> Color(0xFF2E7D32)
+                                                            OrderStage.IN_TRANSIT -> Color(0xFF1976D2)
                                                             else -> Color(0xFFEF6C00)
                                                         },
                                                         fontWeight = FontWeight.Bold,
@@ -337,18 +350,41 @@ fun ProfileScreen(
                                             }
 
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = "Ожидается: ${order.deliveryTime}",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF2E7D32)
-                                            )
+                                            if (stage == OrderStage.DELIVERED) {
+                                                Text(
+                                                    text = "Доставлен • ${order.date}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color(0xFF2E7D32)
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "Ожидается: ${order.deliveryTime}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color(0xFF2E7D32)
+                                                )
+                                            }
 
-                                            Spacer(modifier = Modifier.height(2.dp))
                                             Text(
-                                                text = "${order.date} • ${order.items.sumOf { it.count }} шт. • ${formatPrice(order.totalPrice)}",
+                                                text = "${order.items.sumOf { it.count }} шт. • ${formatPrice(order.totalPrice)}",
                                                 fontSize = 12.sp,
                                                 color = Color.Gray
+                                            )
+
+                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                            // Трекер стадий заказа: собирается -> в доставку -> в пути -> на месте -> доставлен
+                                            OrderStageTracker(
+                                                stages = listOf(
+                                                OrderStage.ASSEMBLING,
+                                                OrderStage.SENT_TO_DELIVERY,
+                                                OrderStage.IN_TRANSIT,
+                                                OrderStage.ARRIVED,
+                                                OrderStage.DELIVERED
+                                            ),
+                                                currentIndex = stageIndex,
+                                                stageTimestamp = { st -> order.stageTimestamp(st) }
                                             )
 
                                             Spacer(modifier = Modifier.height(10.dp))
@@ -724,6 +760,110 @@ fun ProfileScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
                     ) {
                         Text("Опубликовать", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Вертикальный трекер стадий доставки заказа (как в Ozon/WB)
+@Composable
+private fun OrderStageTracker(
+    stages: List<OrderStage>,
+    currentIndex: Int,
+    stageTimestamp: (OrderStage) -> String
+) {
+    val doneColor = Color(0xFF2E7D32)
+    val activeColor = VoltixOrange
+    val pendingColor = Color(0xFFBDBDBD)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        stages.forEachIndexed { index, stage ->
+            val isDone = index < currentIndex
+            val isActive = index == currentIndex
+            val dotColor = when {
+                isDone -> doneColor
+                isActive -> activeColor
+                else -> pendingColor
+            }
+            val lineColor = if (index < currentIndex) doneColor else Color(0xFFE0E0E0)
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Колонка с точками и линией
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(dotColor)
+                    ) {
+                        if (isDone) {
+                            Text(text = "✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        } else if (isActive) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                            )
+                        }
+                    }
+                    if (index != stages.lastIndex) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(34.dp)
+                                .background(lineColor)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.padding(bottom = if (index == stages.lastIndex) 0.dp else 10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stage.title,
+                            fontSize = 13.sp,
+                            fontWeight = if (isActive || isDone) FontWeight.Bold else FontWeight.Normal,
+                            color = when {
+                                isActive -> Color(0xFF1E1E1E)
+                                isDone -> doneColor
+                                else -> Color.Gray
+                            }
+                        )
+                        if (isActive && stage != stages.last()) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = Color(0xFFFFF3E0),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "сейчас",
+                                    fontSize = 9.sp,
+                                    color = activeColor,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (isActive) {
+                        Text(
+                            text = stage.description,
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            lineHeight = 14.sp
+                        )
+                    }
+                    if (isDone || isActive) {
+                        Text(
+                            text = stageTimestamp(stage),
+                            fontSize = 10.sp,
+                            color = Color.LightGray
+                        )
                     }
                 }
             }

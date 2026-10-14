@@ -271,7 +271,7 @@ fun CheckoutScreen(
                             deliveryTime = deliveryEstimateStr,
                             items = cartItems,
                             total = finalPrice,
-                            status = "В пути"
+                            status = "Заказ собирается"
                         )
 
                         showReceiptDialog = true
